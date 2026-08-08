@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Camera, MapPin, Siren } from "lucide-react";
+import { useRef, useState } from "react";
+import { Camera, MapPin, Siren, X } from "lucide-react";
 
 import { useReportIncident } from "@/hooks/queries/useCitizenQueries";
 import { Button } from "@/components/ui/button";
@@ -20,18 +20,54 @@ const CATEGORIES = [
   { label: "Other", value: "other" },
 ];
 
+const ALLOWED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_PHOTO_SIZE_BYTES = 8 * 1024 * 1024;
+
 function ReportIncidentDialog({ trigger }) {
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState(CATEGORIES[0].value);
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState(null);
+  const [photo, setPhoto] = useState(null);
   const [locating, setLocating] = useState(false);
+  const fileInputRef = useRef(null);
   const reportIncident = useReportIncident();
 
   function resetForm() {
     setCategory(CATEGORIES[0].value);
     setDescription("");
     setLocation(null);
+    setPhoto(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function handlePhotoChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setPhoto(null);
+      return;
+    }
+    if (!ALLOWED_PHOTO_TYPES.includes(file.type)) {
+      e.target.value = "";
+      setPhoto(null);
+      toast({
+        variant: "destructive",
+        title: "Unsupported photo type",
+        description: "Attach a JPEG, PNG, or WebP image.",
+      });
+      return;
+    }
+    if (file.size > MAX_PHOTO_SIZE_BYTES) {
+      e.target.value = "";
+      setPhoto(null);
+      toast({
+        variant: "destructive",
+        title: "Photo too large",
+        description: "Attach an image smaller than 8 MB.",
+      });
+      return;
+    }
+    setPhoto(file);
   }
 
   function handleUseCurrentLocation() {
@@ -64,7 +100,7 @@ function ReportIncidentDialog({ trigger }) {
       return;
     }
     reportIncident.mutate(
-      { hazardType: category, description, location },
+      { hazardType: category, description, location, photos: photo ? [photo] : [] },
       {
         onSuccess: () => {
           setOpen(false);
@@ -72,7 +108,9 @@ function ReportIncidentDialog({ trigger }) {
           toast({
             variant: "success",
             title: "Report submitted",
-            description: "A volunteer will verify this shortly.",
+            description: photo
+              ? "Your report and photo evidence were uploaded."
+              : "A volunteer will verify this shortly.",
           });
         },
         onError: (err) => {
@@ -144,10 +182,40 @@ function ReportIncidentDialog({ trigger }) {
               <Button type="button" variant="outline" size="sm" className="justify-start" onClick={handleUseCurrentLocation} loading={locating}>
                 <MapPin className="size-4" /> {location ? "Location set" : "Use current location"}
               </Button>
-              <Button type="button" variant="outline" size="sm" className="justify-start" disabled>
-                <Camera className="size-4" /> Attach photo
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="justify-start"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Camera className="size-4" /> {photo ? "Photo attached" : "Attach photo"}
               </Button>
             </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={handlePhotoChange}
+            />
+            {photo && (
+              <div className="flex items-center justify-between rounded-md border border-border bg-secondary/40 px-3 py-2 text-xs">
+                <span className="min-w-0 truncate text-muted-foreground">{photo.name}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => {
+                    setPhoto(null);
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  }}
+                  aria-label="Remove attached photo"
+                >
+                  <X className="size-3.5" />
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center justify-end gap-2 border-t border-border p-4">

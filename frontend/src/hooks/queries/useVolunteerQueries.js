@@ -4,6 +4,31 @@ import api from "@/lib/axios";
 import { ENDPOINTS } from "@/api/endpoints";
 import { QK } from "@/api/queryKeys";
 
+const LIVE_REQUEST_REFETCH_MS = 5000;
+
+function formatTime(value) {
+  if (!value) return "";
+  return new Date(value).toLocaleString();
+}
+
+function requesterName(report) {
+  if (typeof report.reporter === "object" && report.reporter?.name) return report.reporter.name;
+  return "Citizen";
+}
+
+function mapReportToNearbyRequest(report) {
+  return {
+    id: report.id,
+    priority: report.severity,
+    distanceKm: "—",
+    title: report.description,
+    zone: report.riskZone?.name || report.riskZone?.blockId || "Reported location",
+    reportedBy: requesterName(report),
+    time: formatTime(report.createdAt),
+    imageCount: report.photos?.length ?? 0,
+  };
+}
+
 /**
  * Volunteer's own profile — trustScore lives here, there's no separate
  * "/score" endpoint. NOTE: the backend Volunteer model has no gamification
@@ -90,10 +115,10 @@ export function useVolunteerTasks() {
 export function useNearbyRequests() {
   return useQuery({
     queryKey: QK.volunteerNearbyRequests,
-    queryFn: async () => {
-      throw new Error("No backend endpoint for nearby claimable requests yet");
-    },
-    retry: false,
+    queryFn: async () =>
+      (await api.get(ENDPOINTS.CITIZEN_REPORTS, { params: { status: "pending" } })).data
+        .reports.map(mapReportToNearbyRequest),
+    refetchInterval: LIVE_REQUEST_REFETCH_MS,
   });
 }
 

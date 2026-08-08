@@ -18,7 +18,7 @@ const getReport = asyncHandler(async (req, res) => {
 });
 
 const listReports = asyncHandler(async (req, res) => {
-  const { reports, meta } = await citizenReportService.listReports(req.query);
+  const { reports, meta } = await citizenReportService.listReports(req.query, req.user);
   res.status(200).json(new ApiResponse(200, { reports }, 'Reports fetched', meta));
 });
 

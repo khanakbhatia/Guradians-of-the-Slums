@@ -55,9 +55,24 @@ const createIncident = async (payload, actorId) => {
 // ---------------------------------------------------------------------------
 
 const getIncidentById = async (id) => {
-  const incident = await Incident.findById(id).populate('riskZone', 'blockId settlement riskLevel');
+  const incident = await Incident.findById(id)
+    .populate('riskZone', 'blockId settlement riskLevel')
+    .populate({
+      path: 'relatedReports',
+      select: 'hazardType description photos reporter createdAt',
+      populate: { path: 'reporter', select: 'name' },
+    });
   if (!incident) throw new ApiError(404, 'Incident not found');
-  return incident;
+  const incidentObject = incident.toObject({ virtuals: true });
+  incidentObject.images = (incidentObject.relatedReports || []).flatMap((report) =>
+    (report.photos || []).map((photo, index) => ({
+      id: photo.publicId || `${report._id}-${index}`,
+      url: photo.url,
+      caption: `${report.hazardType} report${report.reporter?.name ? ` by ${report.reporter.name}` : ''}`,
+      reportId: report._id,
+    }))
+  );
+  return incidentObject;
 };
 
 const listIncidents = async (query) => {

@@ -4,6 +4,8 @@ import api from "@/lib/axios";
 import { ENDPOINTS } from "@/api/endpoints";
 import { QK } from "@/api/queryKeys";
 
+const LIVE_REPORT_REFETCH_MS = 5000;
+
 // risk-status, nearby shelters, emergency contacts, and disaster tips have
 // no backing resource anywhere in the backend (no routes for them exist —
 // they were previously pointed at made-up paths like "/citizen/shelters").
@@ -63,6 +65,15 @@ export function useCitizenNotifications() {
   return useQuery({
     queryKey: QK.citizenNotifications,
     queryFn: async () => (await api.get(ENDPOINTS.NOTIFICATIONS)).data.notifications,
+    refetchInterval: LIVE_REPORT_REFETCH_MS,
+  });
+}
+
+export function useCitizenReports() {
+  return useQuery({
+    queryKey: QK.citizenReports,
+    queryFn: async () => (await api.get(ENDPOINTS.CITIZEN_REPORTS)).data.reports,
+    refetchInterval: LIVE_REPORT_REFETCH_MS,
   });
 }
 
@@ -90,9 +101,22 @@ export function useMarkNotificationRead() {
 export function useReportIncident() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (payload) => (await api.post(ENDPOINTS.CITIZEN_REPORTS, payload)).data,
+    mutationFn: async ({ photos = [], ...payload }) => {
+      const created = (await api.post(ENDPOINTS.CITIZEN_REPORTS, payload)).data.report;
+      if (photos.length === 0) return created;
+
+      const formData = new FormData();
+      for (const photo of photos) {
+        formData.append("photos", photo);
+      }
+      return (await api.post(ENDPOINTS.citizenReportImages(created.id), formData)).data.report;
+    },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QK.citizenReports });
       queryClient.invalidateQueries({ queryKey: QK.citizenNotifications });
+      queryClient.invalidateQueries({ queryKey: QK.authorityApprovals });
+      queryClient.invalidateQueries({ queryKey: QK.authorityOverview });
+      queryClient.invalidateQueries({ queryKey: QK.volunteerNearbyRequests });
     },
   });
 }

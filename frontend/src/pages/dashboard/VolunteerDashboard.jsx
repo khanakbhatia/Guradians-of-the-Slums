@@ -14,9 +14,8 @@ import { toast } from "@/hooks/use-toast";
 
 /**
  * Volunteer Dashboard — composed entirely from src/components/dashboard/volunteer/*.
- * Tasks/nearby-requests/claim have no backend endpoint yet (see
- * useVolunteerQueries.js) — those sections will show their ErrorState
- * with the reason, rather than crash or silently render nothing.
+ * Assigned tasks still require a volunteer task-list endpoint; nearby
+ * citizen reports use the real citizen-report queue.
  */
 function VolunteerDashboard() {
   const tasksQuery = useVolunteerTasks();

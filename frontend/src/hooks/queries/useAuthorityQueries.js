@@ -4,10 +4,34 @@ import api from "@/lib/axios";
 import { ENDPOINTS } from "@/api/endpoints";
 import { QK } from "@/api/queryKeys";
 
+const LIVE_DASHBOARD_REFETCH_MS = 5000;
+
+function formatTime(value) {
+  if (!value) return "";
+  return new Date(value).toLocaleString();
+}
+
+function reportRequester(report) {
+  if (typeof report.reporter === "object" && report.reporter?.name) return report.reporter.name;
+  return "Citizen";
+}
+
+function mapReportToApprovalItem(report) {
+  return {
+    ...report,
+    type: report.hazardType,
+    summary: report.description,
+    requestedBy: reportRequester(report),
+    time: formatTime(report.createdAt),
+    imageCount: report.photos?.length ?? 0,
+  };
+}
+
 export function useRiskZones() {
   return useQuery({
     queryKey: QK.authorityRiskZones,
     queryFn: async () => (await api.get(ENDPOINTS.AUTHORITY_RISK_ZONES)).data.riskZones,
+    refetchInterval: LIVE_DASHBOARD_REFETCH_MS,
   });
 }
 
@@ -35,6 +59,7 @@ export function useAuthorityOverview() {
         { id: "approvals", label: "Pending approvals", value: reports.meta?.totalItems ?? reports.data.reports.length, icon: "Clock" },
       ];
     },
+    refetchInterval: LIVE_DASHBOARD_REFETCH_MS,
   });
 }
 
@@ -91,6 +116,7 @@ export function useAuthorityIncidentFeed() {
   return useQuery({
     queryKey: QK.authorityIncidents,
     queryFn: async () => (await api.get(ENDPOINTS.AUTHORITY_INCIDENTS)).data.incidents,
+    refetchInterval: LIVE_DASHBOARD_REFETCH_MS,
   });
 }
 
@@ -102,7 +128,8 @@ export function useApprovalQueue() {
     // component expects.
     queryFn: async () =>
       (await api.get(ENDPOINTS.AUTHORITY_APPROVALS, { params: { status: "pending" } })).data
-        .reports,
+        .reports.map(mapReportToApprovalItem),
+    refetchInterval: LIVE_DASHBOARD_REFETCH_MS,
   });
 }
 
@@ -117,6 +144,9 @@ export function useApprovalDecision() {
       queryClient.setQueryData(QK.authorityApprovals, (prev) =>
         Array.isArray(prev) ? prev.filter((item) => item.id !== id) : prev
       );
+      queryClient.invalidateQueries({ queryKey: QK.authorityOverview });
+      queryClient.invalidateQueries({ queryKey: QK.authorityIncidents });
+      queryClient.invalidateQueries({ queryKey: QK.volunteerNearbyRequests });
     },
   });
 }

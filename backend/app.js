@@ -5,6 +5,7 @@
  */
 
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
@@ -91,6 +92,10 @@ app.use(
   swaggerUi.setup(swaggerSpec, { customSiteTitle: 'Guardians Platform API Docs' })
 );
 app.get('/api/docs.json', (req, res) => res.status(200).json(swaggerSpec));
+
+// Local upload fallback for environments without Cloudinary credentials.
+// Stored filenames are generated server-side; no user-controlled paths are exposed.
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), { maxAge: '1d' }));
 
 // Routes
 app.use('/api', routes); // unversioned: /api/health

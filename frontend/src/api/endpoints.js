@@ -57,6 +57,7 @@ export const ENDPOINTS = {
   // /incidents is authority/admin-only and would 403 for a citizen.
   CITIZEN_REPORTS: "/citizen-reports",
   citizenReportDetails: (id) => `/citizen-reports/${id}`,
+  citizenReportImages: (id) => `/citizen-reports/${id}/images`,
   citizenReportStatus: (id) => `/citizen-reports/${id}/status`,
   // NO BACKEND ROUTE, and per the brief not to be pointed at a guessed
   // path either: nearby shelters, risk-status widget, emergency contacts,

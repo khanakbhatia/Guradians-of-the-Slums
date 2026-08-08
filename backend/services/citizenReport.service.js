@@ -14,6 +14,7 @@ const { assertOwnerOrAdmin } = require('../utils/ownership');
 const { parsePagination, buildPaginationMeta, parseSort, parseFilters } = require('../utils/queryBuilder');
 const { compressImage } = require('../utils/imageCompression');
 const cloudinaryUpload = require('./cloudinaryUpload.service');
+const { safeEmitToRooms } = require('../config/socket');
 
 const CREATE_FIELDS = ['hazardType', 'severity', 'description', 'location', 'riskZone', 'incident'];
 const LIST_FILTER_FIELDS = ['status', 'hazardType', 'severity'];
@@ -26,6 +27,23 @@ const CLOUDINARY_FOLDER = 'citizen-reports';
 // Flat, deterministic reliability adjustments — not a computed/weighted
 // score. Replacing this with a real model is explicitly future work.
 const RELIABILITY_DELTA = { verify: 10, flag: -15, reject: -20, resolve: 0 };
+
+const reportSocketPayload = (report) => ({
+  id: String(report._id),
+  status: report.status,
+  hazardType: report.hazardType,
+  severity: report.severity,
+  reporter: report.reporter ? String(report.reporter._id || report.reporter) : null,
+  incident: report.incident ? String(report.incident._id || report.incident) : null,
+  updatedAt: report.updatedAt,
+});
+
+const emitReportEvent = (event, report) => {
+  const rooms = ['role:authority', 'role:admin'];
+  if (report.reporter) rooms.push(`user:${String(report.reporter._id || report.reporter)}`);
+  if (report.incident) rooms.push(`incident:${String(report.incident._id || report.incident)}`);
+  safeEmitToRooms(rooms, event, reportSocketPayload(report));
+};
 
 // ---------------------------------------------------------------------------
 // Create
@@ -48,6 +66,8 @@ const createReport = async (payload, actorId) => {
     metadata: { hazardType: report.hazardType, severity: report.severity },
   });
 
+  emitReportEvent('citizen-report:created', report);
+
   return report;
 };
 
@@ -61,10 +81,11 @@ const getReportById = async (id) => {
   return report;
 };
 
-const listReports = async (query) => {
+const listReports = async (query, actor) => {
   const { page, limit, skip } = parsePagination(query);
   const sort = parseSort(query, LIST_SORT_FIELDS, DEFAULT_SORT);
   const filter = parseFilters(query, LIST_FILTER_FIELDS);
+  if (actor?.role === 'citizen') filter.reporter = actor.id;
 
   const [reports, totalItems] = await Promise.all([
     CitizenReport.find(filter).sort(sort).skip(skip).limit(limit).populate('reporter', 'name avatar').lean(),
@@ -106,7 +127,12 @@ const uploadReportImages = async (reportId, actor, files) => {
     files.map(async (file) => {
       const { buffer } = await compressImage(file.buffer);
       const result = await cloudinaryUpload.uploadBuffer(buffer, CLOUDINARY_FOLDER);
-      return { url: result.url, publicId: result.publicId };
+      return {
+        url: result.url,
+        publicId: result.publicId,
+        mimeType: result.format ? `image/${result.format === 'jpg' ? 'jpeg' : result.format}` : file.mimetype,
+        sizeBytes: result.bytes || buffer.length,
+      };
     })
   );
 
@@ -127,6 +153,8 @@ const uploadReportImages = async (reportId, actor, files) => {
     entityId: report._id,
     metadata: { count: uploaded.length, failedCount, totalPhotos: report.photos.length },
   });
+
+  emitReportEvent('citizen-report:images-updated', report);
 
   return { report, uploadedCount: uploaded.length, failedCount };
 };
@@ -172,6 +200,8 @@ const applyVerificationAction = async (id, action, fromStatuses, toStatus, actor
     entityId: report._id,
     metadata: { toStatus, reliabilityDelta: delta, note: note || null },
   });
+
+  emitReportEvent('citizen-report:status-updated', report);
 
   return report;
 };

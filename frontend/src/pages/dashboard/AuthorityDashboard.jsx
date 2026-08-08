@@ -9,9 +9,8 @@ import TaskApprovalQueue from "@/components/dashboard/authority/TaskApprovalQueu
 import AIRecommendations from "@/components/dashboard/authority/AIRecommendations";
 
 /**
- * Authority Dashboard — composed entirely from src/components/dashboard/authority/*.
- * Every section reads DUMMY JSON from src/data/authorityDashboard.js.
- * No backend is integrated anywhere on this page.
+ * Authority Dashboard — composed from src/components/dashboard/authority/*.
+ * Operational feeds use the backend through React Query hooks.
  */
 function AuthorityDashboard() {
   return (

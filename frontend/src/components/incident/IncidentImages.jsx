@@ -5,6 +5,13 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Muted } from "@/components/ui/typography";
 
+function imageUrl(url) {
+  if (!url || /^https?:\/\//i.test(url)) return url;
+  const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
+  const serverBase = apiBase.replace(/\/api\/v1\/?$/, "");
+  return `${serverBase}${url.startsWith("/") ? url : `/${url}`}`;
+}
+
 function ImageThumb({ image, onClick }) {
   const [failed, setFailed] = useState(false);
 
@@ -26,7 +33,7 @@ function ImageThumb({ image, onClick }) {
       className="group relative aspect-video w-full overflow-hidden rounded-md border border-border"
     >
       <img
-        src={image.url}
+        src={imageUrl(image.url)}
         alt={image.caption}
         onError={() => setFailed(true)}
         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
@@ -38,8 +45,8 @@ function ImageThumb({ image, onClick }) {
   );
 }
 
-/** Evidence gallery. Illustrative placeholder images — no upload/storage backend. */
-function IncidentImages({ images, className }) {
+/** Evidence gallery for incident/report photos returned by the API. */
+function IncidentImages({ images = [], className }) {
   const [active, setActive] = useState(null);
 
   return (
@@ -68,7 +75,7 @@ function IncidentImages({ images, className }) {
           <DialogTitle className="sr-only">{active?.caption}</DialogTitle>
           {active && (
             <>
-              <img src={active.url} alt={active.caption} className="w-full rounded-t-lg" />
+              <img src={imageUrl(active.url)} alt={active.caption} className="w-full rounded-t-lg" />
               <div className="p-4">
                 <Muted>{active.caption}</Muted>
               </div>

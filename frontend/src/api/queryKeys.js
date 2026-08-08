@@ -20,6 +20,7 @@ export const QK = {
   citizenRiskStatus: ["citizen", "risk-status"],
   citizenShelters: ["citizen", "shelters"],
   citizenAlerts: ["citizen", "alerts"],
+  citizenReports: ["citizen", "reports"],
   citizenContacts: ["citizen", "emergency-contacts"],
   citizenTips: ["citizen", "disaster-tips"],
   citizenNotifications: ["citizen", "notifications"],
