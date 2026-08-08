@@ -3,32 +3,45 @@
  * watsonx.ai — the model-hosting/orchestration layer underneath BeeAI.
  * Where BeeAIService represents "run the agent chain," this represents
  * the lower-level "invoke a specific hosted model with governance and
- * logging." A real implementation would have BeeAIService call into this
- * for the actual model invocations, while this wrapper stays agent-
- * agnostic (it doesn't know about Risk Analyst / Volunteer Coordinator /
- * Report Generator as concepts — that's BeeAI's layer, not this one's).
+ * logging." In this integration that single governed call is
+ * ai_service's deterministic risk-scoring engine (POST /risk-score,
+ * see ai_service/app/api/m2_facade.py -> RiskScoringEngine), which is
+ * exactly the "lighter-weight than the full agent chain" call
+ * routes/v1/ai.routes.js documents for POST /ai/risk-score.
  *
- * Role per method (documentation only — nothing below executes AI logic):
- * - analyzeRisk: a governed, logged model call that would back the Risk
- *   Analyst Agent's reasoning step.
- * - generateReport: a governed, logged model call that would back the
- *   Report Generator Agent's text-generation step (likely delegating to
- *   GraniteService under the hood in a real implementation).
- * - assignVolunteer: a governed, logged model call that would back the
- *   Volunteer Coordinator Agent's matching step.
- * - summarizeIncident: a governed, logged model call for a standalone
- *   summarization request outside the full agent chain.
+ * Role per method (see IBMServiceBase for the shared method contracts):
+ * - analyzeRisk: REAL — a single call to ai_service's risk-scoring
+ *   engine. No BeeAI orchestration, no Granite narrative generation —
+ *   just the governed score.
+ * - generateReport / assignVolunteer / summarizeIncident: NOT watsonx's
+ *   documented role for this project (those belong to BeeAIService /
+ *   GraniteService) and nothing routes to them here — left as
+ *   documented not-implemented rather than duplicating logic that
+ *   already lives in the other two wrappers.
  */
 
 const IBMServiceBase = require('./IBMServiceBase');
+const { aiServiceClient } = require('./aiServiceClient');
+const { buildRiskScoringRequest, mapRiskScoringResponseToLegacy } = require('./mappers');
 
 class WatsonxService extends IBMServiceBase {
   constructor() {
     super('WatsonxService', ['WATSONX_API_KEY', 'WATSONX_URL', 'WATSONX_PROJECT_ID']);
   }
 
-  async analyzeRisk(input) {
-    return super.analyzeRisk(input);
+  /**
+   * @param {{ riskZoneId?: string, hazardType?: string, satelliteData?: object, roadGraph?: object, weatherData?: object, historicalContext?: Array }} input
+   */
+  async analyzeRisk(input = {}) {
+    const request = buildRiskScoringRequest({
+      areaId: input.riskZoneId || input.areaId,
+      satelliteData: input.satelliteData,
+      roadGraph: input.roadGraph,
+      weatherData: input.weatherData,
+      historicalContext: input.historicalContext,
+    });
+    const response = await aiServiceClient.postJSON('/risk-score', request);
+    return mapRiskScoringResponseToLegacy(response);
   }
 
   async generateReport(input) {

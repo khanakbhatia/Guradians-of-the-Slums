@@ -8,6 +8,19 @@
  * not producing its output. Exposed here purely for interface
  * consistency with the other four wrappers.
  *
+ * STATUS: still architecture-only (all four methods 501). Unlike
+ * GraniteService/BeeAIService/WatsonxService, ai_service does not
+ * currently expose a data-prep endpoint through its M2 facade
+ * (ai_service/app/api/m2_facade.py) or a generic /api/v1 route this
+ * wrapper's four-method interface could map onto — ai_service's data-prep
+ * pipeline (app/pipelines/data_preprocessing_pipeline.py) is invoked
+ * internally by other pipelines, not exposed as its own HTTP boundary.
+ * No Node route calls this wrapper today either. Per the "don't invent
+ * functionality" constraint, this stays a documented TODO rather than a
+ * guessed integration: when ai_service adds a data-prep endpoint, wire
+ * it here the same way granite.service.js/beeai.service.js/watsonx.service.js
+ * call services/ibm/aiServiceClient.js.
+ *
  * Role per method (documentation only — nothing below executes AI logic):
  * - analyzeRisk: would clean/normalize raw satellite tiles and weather
  *   CSVs into the structured shape a risk-scoring step expects.

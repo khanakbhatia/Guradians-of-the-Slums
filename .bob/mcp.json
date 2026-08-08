@@ -2,13 +2,12 @@
   "mcpServers": {
     "guardians-disaster-tools": {
       "type": "stdio",
-      "command": "py",
+      "command": "C:\\Users\\Shreya\\Desktop\\gos\\ai_service\\.venv\\Scripts\\python.exe",
       "args": [
-        "-3.13",
         "-m",
         "app.integrations.bob_mcp_server"
       ],
-      "cwd": "C:\\Users\\Arun Kumar\\OneDrive\\Documents\\Guardians of the Slums\\ai_service",
+      "cwd": "C:\\Users\\Shreya\\Desktop\\gos\\ai_service",
       "env": {
         "GUARDIANS_AI_BASE_URL": "http://127.0.0.1:8001",
         "GUARDIANS_AI_TIMEOUT_SECONDS": "30"

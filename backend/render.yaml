@@ -46,3 +46,7 @@ services:
         value: info
       - key: MORGAN_FORMAT
         value: combined
+      # ai_service (FastAPI + BeeAI + IBM Granite) — must be deployed
+      # separately and reachable from this service at this URL.
+      - key: AI_SERVICE_URL
+        sync: false
