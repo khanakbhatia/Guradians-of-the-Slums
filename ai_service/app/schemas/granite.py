@@ -8,7 +8,7 @@ from app.schemas.rag import KnowledgeSourceType, RetrievedContext
 
 
 class GraniteOutputType(StrEnum):
-    """Supported grounded Granite outputs."""
+    """Supported grounded IBM Granite outputs."""
 
     INCIDENT_REPORT = "incident_report"
     CITIZEN_ALERT = "citizen_alert"
@@ -18,7 +18,7 @@ class GraniteOutputType(StrEnum):
 
 
 class GraniteGenerationRequest(BaseModel):
-    """Request for grounded Granite generation."""
+    """Request for grounded IBM Granite generation."""
 
     output_type: GraniteOutputType
     incident_context: str
@@ -43,7 +43,7 @@ class GroundingCitation(BaseModel):
 
 
 class GraniteGenerationResponse(BaseModel):
-    """Grounded Granite generation response."""
+    """Grounded IBM Granite generation response."""
 
     output_type: GraniteOutputType
     generated_text: str

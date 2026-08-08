@@ -1,4 +1,4 @@
-# Granite Prompt Templates
+# IBM Granite Prompt Templates
 
 Reusable templates live in:
 
@@ -28,4 +28,4 @@ Templates included:
 - `incident_context`
 - `grounding_rules`
 
-The templates are not wired into runtime generation yet. They are reusable prompt assets for Granite calls.
+The templates are reusable prompt assets for RAG-grounded IBM Granite calls.

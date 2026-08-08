@@ -1,4 +1,7 @@
-"""Request and response schemas for BeeAI multi-agent orchestration."""
+"""Request and response schemas for Granite-backed multi-agent orchestration.
+
+Legacy BeeAI class names are retained as aliases for existing API contracts.
+"""
 
 from enum import StrEnum
 
@@ -6,7 +9,7 @@ from pydantic import BaseModel, Field
 
 
 class BeeAIAgentName(StrEnum):
-    """Specialized BeeAI agents in the disaster-response workflow."""
+    """Specialized Granite-backed agents in the disaster-response workflow."""
 
     RISK_ANALYST = "risk_analyst"
     VOLUNTEER_COORDINATOR = "volunteer_coordinator"
@@ -39,7 +42,7 @@ class BeeAIWorkflowStep(BaseModel):
 
 
 class BeeAIOrchestrationRequest(BaseModel):
-    """Request for the BeeAI disaster-response team."""
+    """Request for the Granite-backed disaster-response team."""
 
     incident_id: str
     incident_context: str
@@ -67,7 +70,7 @@ class BeeAITaskDelegation(BaseModel):
 
 
 class BeeAISharedMemoryEntry(BaseModel):
-    """Shared incident memory entry visible across the BeeAI workflow."""
+    """Shared incident memory entry visible across the Granite workflow."""
 
     memory_id: str
     author: str
@@ -112,7 +115,7 @@ class BeeAIAgentResult(BaseModel):
 
 
 class BeeAIOrchestrationResponse(BaseModel):
-    """Structured response from the BeeAI multi-agent workflow."""
+    """Structured response from the Granite-backed multi-agent workflow."""
 
     incident_id: str
     status: str

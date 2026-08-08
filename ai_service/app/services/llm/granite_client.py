@@ -1,10 +1,14 @@
-"""RAG-grounded IBM Granite generation client."""
+"""RAG-grounded local IBM Granite generation client."""
 
 from __future__ import annotations
 
-import os
 import re
 
+from app.integrations.local_granite import (
+    GraniteRuntimeError,
+    LocalGraniteClient,
+    LocalGraniteRequest,
+)
 from app.schemas.granite import (
     GraniteGenerationRequest,
     GraniteGenerationResponse,
@@ -21,14 +25,11 @@ class GraniteGroundingError(RuntimeError):
 
 
 class GraniteClient:
-    """IBM Granite client that refuses ungrounded generation."""
+    """Local IBM Granite client that refuses ungrounded generation."""
 
     def __init__(self, rag_service: RagRetrievalService | None = None) -> None:
-        self.model_id = os.getenv("GRANITE_MODEL_ID", "ibm/granite-13b-instruct-v2")
-        self.project_id = os.getenv("WATSONX_PROJECT_ID")
-        self.api_key = os.getenv("WATSONX_API_KEY")
-        self.url = os.getenv("WATSONX_URL")
         self.rag_service = rag_service or RagRetrievalService()
+        self.granite_client = LocalGraniteClient()
 
     def generate(self, request: GraniteGenerationRequest) -> GraniteGenerationResponse:
         """Generate only after retrieving grounding contexts."""
@@ -47,7 +48,8 @@ class GraniteClient:
             raise GraniteGroundingError(msg)
 
         prompt = self._grounded_prompt(request, retrieval.contexts)
-        generated_text = self._call_granite(prompt)
+        granite_response = self._call_granite(request, prompt)
+        generated_text = granite_response.text
         self._validate_grounded_output(generated_text, retrieval.contexts)
         citations = self._citations(retrieval.contexts)
 
@@ -55,7 +57,7 @@ class GraniteClient:
             output_type=request.output_type,
             generated_text=generated_text,
             grounded=True,
-            model_id=self.model_id,
+            model_id=granite_response.model_id,
             citations=citations,
             retrieved_contexts=retrieval.contexts,
         )
@@ -66,28 +68,22 @@ class GraniteClient:
             msg = "Multilingual alerts require at least one target language."
             raise GraniteGroundingError(msg)
 
-    def _call_granite(self, prompt: str) -> str:
-        if not all([self.project_id, self.api_key, self.url]):
-            msg = "Granite generation blocked: watsonx credentials are not configured."
-            raise GraniteGroundingError(msg)
-
-        from ibm_watsonx_ai import Credentials
-        from ibm_watsonx_ai.foundation_models import ModelInference
-
-        credentials = Credentials(url=self.url, api_key=self.api_key)
-        model = ModelInference(
-            model_id=self.model_id,
-            credentials=credentials,
-            project_id=self.project_id,
-            params={
-                "decoding_method": "greedy",
-                "max_new_tokens": 700,
-                "min_new_tokens": 80,
-                "temperature": 0,
-            },
-        )
-        response = model.generate_text(prompt=prompt)
-        return str(response)
+    def _call_granite(self, request: GraniteGenerationRequest, prompt: str):
+        try:
+            return self.granite_client.generate(
+                LocalGraniteRequest(
+                    prompt=prompt,
+                    task_type=f"grounded_{request.output_type.value}",
+                    metadata={
+                        "index_name": request.index_name,
+                        "location_name": request.location_name,
+                        "audience": request.audience,
+                        "target_languages": request.target_languages,
+                    },
+                )
+            )
+        except GraniteRuntimeError as exc:
+            raise GraniteGroundingError(str(exc)) from exc
 
     @staticmethod
     def _retrieval_query(request: GraniteGenerationRequest) -> str:

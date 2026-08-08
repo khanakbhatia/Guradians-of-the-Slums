@@ -1,34 +1,43 @@
-"""BeeAI multi-agent workflow coordinator."""
+"""Local IBM Granite multi-agent workflow coordinator."""
 
 from __future__ import annotations
 
 import asyncio
-import os
 
-from beeai_framework.backend import ChatModel
-from beeai_framework.emitter import EmitterOptions
-from beeai_framework.workflows.agent import AgentWorkflow, AgentWorkflowInput
-
+from app.integrations.local_granite import (
+    LocalGraniteClient,
+    LocalGraniteRequest,
+)
 from app.schemas.agents import (
     BeeAIAgentResult,
     BeeAIOrchestrationRequest,
     BeeAIOrchestrationResponse,
     BeeAIWorkflowStep,
 )
+from app.schemas.rag import RagRetrievalRequest, RetrievedContext
 from app.services.agents.communication import BeeAICommunicationLog
 from app.services.agents.definitions import AGENT_DEFINITIONS, build_workflow_steps
 from app.services.agents.shared_memory import BeeAIIncidentMemory
-from app.services.agents.tools import all_disaster_tools
+from app.services.rag.retriever import RagRetrievalService
 
 
-class BeeAIDisasterCoordinator:
-    """Coordinates the disaster-response specialist agents through BeeAI."""
+CHAT_CONTEXTS_PER_STEP = 1
+CHAT_NUM_PREDICT = 90
 
-    def __init__(self, model_name: str | None = None) -> None:
-        self.model_name = model_name or os.getenv("BEEAI_CHAT_MODEL", "watsonx:ibm/granite-3-8b-instruct")
+
+class GraniteDisasterCoordinator:
+    """Coordinates disaster-response specialist agents through local IBM Granite."""
+
+    def __init__(
+        self,
+        granite_client: LocalGraniteClient | None = None,
+        rag_service: RagRetrievalService | None = None,
+    ) -> None:
+        self.granite_client = granite_client or LocalGraniteClient()
+        self.rag_service = rag_service or RagRetrievalService()
 
     async def run(self, request: BeeAIOrchestrationRequest) -> BeeAIOrchestrationResponse:
-        """Run the BeeAI multi-agent incident workflow."""
+        """Run the Granite-backed multi-agent incident workflow."""
 
         steps = build_workflow_steps(
             incident_context=request.incident_context,
@@ -39,34 +48,29 @@ class BeeAIDisasterCoordinator:
         )
         memory = BeeAIIncidentMemory()
         log = BeeAICommunicationLog()
-        await memory.add_user_context(
-            author="coordinator",
-            content=self._initial_memory_context(request),
-        )
+        await memory.add_user_context(author="coordinator", content=self._initial_memory_context(request))
 
-        response = None
-        final_answer = ""
-        agent_results: list[BeeAIAgentResult] = []
         max_attempts = request.max_retries + 1
+        agent_results: list[BeeAIAgentResult] = []
+        final_answer = ""
+        status = "failed"
 
         for attempt in range(1, max_attempts + 1):
             try:
                 log.event(
                     event_type="workflow_attempt_started",
-                    message=f"Starting BeeAI workflow attempt {attempt}.",
+                    message=f"Starting Granite workflow attempt {attempt}.",
                     attempt=attempt,
                 )
+                agent_results = []
                 for step in steps:
-                    log.delegate(step, attempt)
-
-                workflow = self._build_workflow()
-                workflow_inputs = self._workflow_inputs(request, steps, memory, attempt)
-                response = await self._run_workflow_with_observers(workflow, workflow_inputs, log, attempt)
-                final_answer = self._final_answer(response)
-                agent_results = await self._agent_results(response, steps, final_answer, memory, log, attempt)
+                    result = await self._run_step(request, step, memory, log, attempt)
+                    agent_results.append(result)
+                final_answer = self._final_answer(agent_results)
+                status = "completed"
                 log.event(
                     event_type="workflow_completed",
-                    message="BeeAI workflow completed successfully.",
+                    message="Granite workflow completed successfully.",
                     attempt=attempt,
                 )
                 break
@@ -84,14 +88,14 @@ class BeeAIDisasterCoordinator:
                     attempt=attempt,
                 )
                 if not retryable:
-                    final_answer = "BeeAI orchestration failed after all retry attempts."
+                    final_answer = "Granite orchestration failed after all retry attempts."
                     agent_results = self._failed_agent_results(steps, attempt, str(exc))
                     break
                 await asyncio.sleep(min(2**attempt, 8))
 
         return BeeAIOrchestrationResponse(
             incident_id=request.incident_id,
-            status="completed" if response is not None else "failed",
+            status=status,
             final_answer=final_answer,
             agent_results=agent_results,
             workflow_steps=steps,
@@ -102,176 +106,128 @@ class BeeAIDisasterCoordinator:
             failures=log.failures,
         )
 
-    def _build_workflow(self) -> AgentWorkflow:
-        llm = ChatModel.from_name(self.model_name)
-        workflow = AgentWorkflow(name="Guardians Disaster Response Team")
-        tools = all_disaster_tools()
-
-        for definition in AGENT_DEFINITIONS:
-            workflow.add_agent(
-                name=definition.display_name.replace(" ", ""),
-                role=definition.role,
-                instructions=(
-                    f"Goal: {definition.goal}\n"
-                    f"Memory: use the shared BeeAI workflow context and prior agent outputs.\n"
-                    f"Output: {definition.output}\n"
-                    "Use tools when facts, risk scores, retrieval, or generation are needed. "
-                    "Never invent disaster guidance. Granite generation must use the grounded_granite_tool."
-                ),
-                tools=tools,
-                llm=llm,
-            )
-
-        return workflow
-
-    async def _run_workflow_with_observers(
+    async def _run_step(
         self,
-        workflow: AgentWorkflow,
-        workflow_inputs: list[AgentWorkflowInput],
+        request: BeeAIOrchestrationRequest,
+        step: BeeAIWorkflowStep,
+        memory: BeeAIIncidentMemory,
         log: BeeAICommunicationLog,
         attempt: int,
-    ) -> object:
-        run = workflow.run(inputs=workflow_inputs)
-        return await (
-            run.on(
-                "start",
-                lambda data, event: log.event(
-                    event_type="beeai_step_started",
-                    message=f"BeeAI step started: {getattr(data, 'step', 'unknown')}.",
-                    attempt=attempt,
-                    step_id=str(getattr(data, "step", "")) or None,
-                ),
-            )
-            .on(
-                "success",
-                lambda data, event: log.event(
-                    event_type="beeai_step_succeeded",
-                    message=f"BeeAI step succeeded: {getattr(data, 'step', 'unknown')}.",
-                    attempt=attempt,
-                    step_id=str(getattr(data, "step", "")) or None,
-                ),
-            )
-            .on(
-                "error",
-                lambda data, event: log.event(
-                    event_type="beeai_step_error",
-                    message=f"BeeAI step error: {getattr(data, 'step', 'unknown')}.",
-                    attempt=attempt,
-                    step_id=str(getattr(data, "step", "")) or None,
-                ),
-            )
-            .on(
-                lambda event: isinstance(event.creator, ChatModel) and event.name == "success",
-                lambda data, event: log.event(
-                    event_type="agent_model_response",
-                    message="BeeAI agent produced an LLM response.",
-                    attempt=attempt,
-                ),
-                EmitterOptions(match_nested=True),
+    ) -> BeeAIAgentResult:
+        log.delegate(step, attempt)
+        log.event(
+            event_type="granite_step_started",
+            message=f"Granite step started: {step.step_id}.",
+            attempt=attempt,
+            step_id=step.step_id,
+            agent=step.agent,
+        )
+        contexts = self._retrieve_contexts(request, step)
+        prompt = self._granite_prompt(request, step, contexts, memory, attempt)
+        response = self.granite_client.generate(
+                LocalGraniteRequest(
+                    prompt=prompt,
+                    task_type=f"agent_{step.agent.value}",
+                    num_predict=CHAT_NUM_PREDICT,
+                    metadata={
+                    "incident_id": request.incident_id,
+                    "area_id": request.area_id,
+                    "step_id": step.step_id,
+                    "agent": step.agent.value,
+                    "index_name": request.index_name,
+                },
             )
         )
+        output = response.text
+        await memory.add_agent_output(
+            author=step.agent.value,
+            content=output,
+            related_step_id=step.step_id,
+            attempt=attempt,
+        )
+        log.complete_delegation(step.step_id, attempt)
+        log.event(
+            event_type="granite_step_completed",
+            message=f"Granite step completed using {response.model_id}.",
+            attempt=attempt,
+            step_id=step.step_id,
+            agent=step.agent,
+        )
+        return BeeAIAgentResult(
+            agent=step.agent,
+            step_id=step.step_id,
+            output=output,
+            status="completed",
+            attempt=attempt,
+        )
 
-    def _workflow_inputs(
+    def _retrieve_contexts(
         self,
         request: BeeAIOrchestrationRequest,
-        steps: list[BeeAIWorkflowStep],
-        memory: BeeAIIncidentMemory,
-        attempt: int,
-    ) -> list[AgentWorkflowInput]:
-        return [
-            AgentWorkflowInput(
-                prompt=self._delegation_prompt(step),
-                context=self._shared_context(request, step.depends_on, memory, attempt),
-                expected_output=step.expected_output,
+        step: BeeAIWorkflowStep,
+    ) -> list[RetrievedContext]:
+        retrieval = self.rag_service.retrieve(
+            RagRetrievalRequest(
+                query=f"{step.prompt} {request.incident_context}",
+                index_name=request.index_name,
+                top_k=CHAT_CONTEXTS_PER_STEP,
             )
-            for step in steps
-        ]
-
-    @staticmethod
-    def _delegation_prompt(step: BeeAIWorkflowStep) -> str:
-        return (
-            f"Assigned specialist: {step.agent.value}.\n"
-            f"Task delegation ID: {step.step_id}.\n"
-            f"Task: {step.prompt}\n"
-            f"Expected output: {step.expected_output}\n"
-            "Communicate important findings through the shared workflow context. "
-            "When you rely on generated disaster guidance, call grounded_granite_tool."
         )
+        return retrieval.contexts
 
-    @staticmethod
-    def _shared_context(
+    def _granite_prompt(
+        self,
         request: BeeAIOrchestrationRequest,
-        depends_on: list[str],
+        step: BeeAIWorkflowStep,
+        contexts: list[RetrievedContext],
         memory: BeeAIIncidentMemory,
         attempt: int,
     ) -> str:
-        return (
-            f"Incident ID: {request.incident_id}\n"
-            f"Area ID: {request.area_id or 'not provided'}\n"
-            f"RAG index: {request.index_name}\n"
-            f"Target languages: {', '.join(request.target_languages) or 'English'}\n"
-            f"Depends on: {', '.join(depends_on) or 'none'}\n"
-            f"Attempt: {attempt}\n"
-            f"Incident context: {request.incident_context}\n"
-            f"Shared memory:\n{memory.snapshot_text()}"
+        return f"""
+You are IBM Granite coordinating a disaster-response specialist workflow for informal settlements.
+
+Agent: {step.agent.value}
+Task: {step.prompt}
+Expected output: {step.expected_output}
+
+Rules:
+- Use retrieved context when available.
+- Do not invent disaster guidance, agencies, routes, capacities, or policy requirements.
+- If retrieved context is insufficient, explicitly say "Not available in retrieved sources".
+- Include citation markers like [1], [2] for factual claims based on retrieved context.
+- Keep the output operational, concise, and safe for human review.
+- Return no more than 4 short bullets or 70 words.
+
+Incident:
+{request.incident_context}
+
+Area ID: {request.area_id or "not provided"}
+Target languages: {", ".join(request.target_languages) or "English"}
+Attempt: {attempt}
+
+Retrieved context:
+{self._context_block(contexts)}
+
+Shared memory:
+{memory.snapshot_text()}
+""".strip()
+
+    @staticmethod
+    def _context_block(contexts: list[RetrievedContext]) -> str:
+        if not contexts:
+            return "No RAG contexts retrieved for this step."
+        return "\n\n".join(
+            f"[{index + 1}] {context.title} ({context.source_type.value})\n{context.text}"
+            for index, context in enumerate(contexts)
         )
 
-    async def _agent_results(
-        self,
-        response: object,
-        steps: list[BeeAIWorkflowStep],
-        final_answer: str,
-        memory: BeeAIIncidentMemory,
-        log: BeeAICommunicationLog,
-        attempt: int,
-    ) -> list[BeeAIAgentResult]:
-        results: list[BeeAIAgentResult] = []
-        for index, step in enumerate(steps):
-            output = self._step_output(response, step.step_id, index, final_answer)
-            log.complete_delegation(step.step_id, attempt)
-            await memory.add_agent_output(
-                author=step.agent.value,
-                content=output,
-                related_step_id=step.step_id,
-                attempt=attempt,
-            )
-            results.append(
-                BeeAIAgentResult(
-                    agent=step.agent,
-                    step_id=step.step_id,
-                    output=output,
-                    status="completed",
-                    attempt=attempt,
-                )
-            )
-        return results
-
     @staticmethod
-    def _step_output(response: object, step_id: str, index: int, fallback: str) -> str:
-        steps = getattr(response, "steps", []) or []
-        for step in steps:
-            if getattr(step, "name", "") == step_id:
-                return str(getattr(step, "output", "") or fallback)
-        if index < len(steps):
-            step = steps[index]
-            output = getattr(step, "output", None) or getattr(step, "result", None)
-            if output:
-                return str(output)
-        return fallback
-
-    @staticmethod
-    def _final_answer(response: object) -> str:
-        state = getattr(response, "state", None)
-        if state is not None:
-            final_answer = getattr(state, "final_answer", None)
-            if final_answer:
-                return str(final_answer)
-        result = getattr(response, "result", None)
-        if result is not None:
-            final_answer = getattr(result, "final_answer", None) or getattr(result, "finalAnswer", None)
-            if final_answer:
-                return str(final_answer)
-        return ""
+    def _final_answer(agent_results: list[BeeAIAgentResult]) -> str:
+        if not agent_results:
+            return ""
+        return "\n\n".join(
+            f"{result.agent.value}: {result.output}" for result in agent_results if result.output
+        )
 
     @staticmethod
     def _initial_memory_context(request: BeeAIOrchestrationRequest) -> str:
@@ -291,10 +247,13 @@ class BeeAIDisasterCoordinator:
             BeeAIAgentResult(
                 agent=step.agent,
                 step_id=step.step_id,
-                output=f"No output produced because BeeAI orchestration failed: {message}",
+                output=f"No output produced because Granite orchestration failed: {message}",
                 status="failed",
                 attempt=attempt,
                 failure=None,
             )
             for step in steps
         ]
+
+
+BeeAIDisasterCoordinator = GraniteDisasterCoordinator

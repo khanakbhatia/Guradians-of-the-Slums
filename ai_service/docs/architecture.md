@@ -13,7 +13,7 @@ This folder is owned by M3 and contains only AI-service architecture.
    Pydantic request and response contracts.
 
 3. `app/services`
-   Domain service boundaries for CV, graph AI, risk, RAG, Granite, BeeAI, explainability, matching, and planning.
+   Domain service boundaries for CV, graph AI, risk, RAG, IBM Granite generation/agents, explainability, matching, and planning.
 
 4. `app/integrations`
    External IBM and storage integration boundaries.
@@ -30,7 +30,7 @@ This folder is owned by M3 and contains only AI-service architecture.
 ## Required Design Rules
 
 - Data preprocessing must use IBM Data Prep Kit for cataloging, transformation, validation, and lineage.
-- Granite answers must be produced through RAG context.
-- BeeAI must coordinate multiple specialized agents.
+- IBM Granite report and alert answers must be produced through RAG context.
+- Granite-backed orchestration must coordinate multiple specialized agents.
 - CV, graph, risk, RAG, LLM, planning, and matching modules must expose reusable service APIs.
 - Frontend and Express backend business logic must remain outside this service.

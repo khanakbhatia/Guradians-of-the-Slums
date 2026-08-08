@@ -1,7 +1,7 @@
 """FAISS and LangChain retrieval service.
 
 This service retrieves knowledge contexts only. It does not generate reports,
-summaries, recommendations, or Granite completions.
+summaries, recommendations, or IBM Granite completions.
 """
 
 from __future__ import annotations
@@ -32,41 +32,6 @@ from app.schemas.rag import (
     RetrievedContext,
 )
 from app.services.rag.document_loader import KnowledgeDocumentLoader
-
-
-class GraniteEmbeddingProvider:
-    """IBM Granite embedding adapter, used only when watsonx settings exist."""
-
-    def __init__(self) -> None:
-        self.model_id = os.getenv("GRANITE_EMBEDDING_MODEL_ID", "ibm/slate-125m-english-rtrvr")
-        self.project_id = os.getenv("WATSONX_PROJECT_ID")
-        self.api_key = os.getenv("WATSONX_API_KEY")
-        self.url = os.getenv("WATSONX_URL")
-        if not all([self.project_id, self.api_key, self.url]):
-            msg = "watsonx credentials are not configured"
-            raise RuntimeError(msg)
-
-        from ibm_watsonx_ai import Credentials
-        from ibm_watsonx_ai.foundation_models.embeddings import Embeddings
-
-        credentials = Credentials(url=self.url, api_key=self.api_key)
-        self.client = Embeddings(
-            model_id=self.model_id,
-            credentials=credentials,
-            project_id=self.project_id,
-        )
-
-    @property
-    def name(self) -> str:
-        return f"ibm_granite:{self.model_id}"
-
-    def embed_documents(self, texts: list[str]) -> np.ndarray:
-        vectors = self.client.embed_documents(texts=texts)
-        return np.array(vectors, dtype=np.float32)
-
-    def embed_query(self, text: str) -> np.ndarray:
-        vector = self.client.embed_query(text=text)
-        return np.array([vector], dtype=np.float32)
 
 
 class HashEmbeddingProvider:
@@ -103,7 +68,7 @@ class RagRetrievalService:
     def __init__(
         self,
         index_root: Path | None = None,
-        embedding_provider: GraniteEmbeddingProvider | HashEmbeddingProvider | None = None,
+        embedding_provider: HashEmbeddingProvider | None = None,
     ) -> None:
         self.index_root = (index_root or Path(os.getenv("FAISS_INDEX_PATH", "./data/vector_indexes"))).resolve()
         self.loader = KnowledgeDocumentLoader()
@@ -266,8 +231,5 @@ class RagRetrievalService:
             return False
 
     @staticmethod
-    def _default_embedding_provider() -> GraniteEmbeddingProvider | HashEmbeddingProvider:
-        try:
-            return GraniteEmbeddingProvider()
-        except Exception:
-            return HashEmbeddingProvider()
+    def _default_embedding_provider() -> HashEmbeddingProvider:
+        return HashEmbeddingProvider()

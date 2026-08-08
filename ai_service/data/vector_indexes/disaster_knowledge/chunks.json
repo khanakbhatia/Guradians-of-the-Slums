@@ -1,0 +1,54 @@
+[
+  {
+    "chunk_id": "disaster_knowledge:0",
+    "document_id": "india-flood-public-safety-sop-001",
+    "source_type": "government_sop",
+    "title": "India Flood Public Safety SOP Extract",
+    "source_uri": "https://nidm.gov.in/iec.asp",
+    "text": "Static local extract derived from NIDM awareness material for common disaster do's and don'ts. During flooding in low-lying lanes, residents should move calmly to official shelters or relief camps when instructed by local authorities. People should avoid entering or crossing floodwater, open drains, submerged roads, and fast-moving water. Families should keep children, elderly people, people with disabilities, and pregnant women away from waterlogged lanes. Residents should carry essential medicines, identity documents, drinking water, a phone, and a small emergency kit if evacuation is required. Follow instructions from the District Collector, Municipal Corporation, police, fire services, disaster management authority, local radio, TV, public loudspeakers, or official community messages. Do not spread unverified warnings. If immediate danger is present, call local emergency numbers such",
+    "metadata": {
+      "published_at": "2026",
+      "jurisdiction": "India",
+      "tags": "flood,citizen_alert,evacuation,shelter,government_sop"
+    }
+  },
+  {
+    "chunk_id": "disaster_knowledge:1",
+    "document_id": "india-flood-public-safety-sop-001",
+    "source_type": "government_sop",
+    "title": "India Flood Public Safety SOP Extract",
+    "source_uri": "https://nidm.gov.in/iec.asp",
+    "text": "messages. Do not spread unverified warnings. If immediate danger is present, call local emergency numbers such as 112 or the state disaster helpline.",
+    "metadata": {
+      "published_at": "2026",
+      "jurisdiction": "India",
+      "tags": "flood,citizen_alert,evacuation,shelter,government_sop"
+    }
+  },
+  {
+    "chunk_id": "disaster_knowledge:2",
+    "document_id": "maharashtra-shelter-assistance-faq-001",
+    "source_type": "government_sop",
+    "title": "Maharashtra Shelter And Assistance Guidance",
+    "source_uri": "https://sdma.maharashtra.gov.in/en/faqs/",
+    "text": "Static local extract derived from Maharashtra State Disaster Management Authority public FAQ guidance. During a flood or similar disaster, local administration and disaster management authorities may set up emergency shelters and relief camps. Residents should listen for official instructions through local radio, television, public loudspeakers, District Collector updates, Municipal Corporation updates, official social media, or community messaging channels. Relief camps may provide safe shelter, drinking water, food, medical check-ups, and support for women, children, elderly people, and vulnerable residents. Citizens should carry essential documents and a small emergency kit and cooperate with evacuation instructions.",
+    "metadata": {
+      "published_at": "2026",
+      "jurisdiction": "Maharashtra, India",
+      "tags": "flood,shelter,relief_camp,government_sop"
+    }
+  },
+  {
+    "chunk_id": "disaster_knowledge:3",
+    "document_id": "urban-flood-drainage-preparedness-001",
+    "source_type": "government_sop",
+    "title": "Urban Flood Drainage And Preparedness Guidance",
+    "source_uri": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2038333",
+    "text": "Static local extract derived from Government of India public information on urban flooding and drainage responsibilities. Urban local bodies and state authorities are responsible for city-level drainage planning, flood mitigation, land-use regulation, and local preparedness actions. For informal settlements and dense urban lanes, response teams should monitor waterlogging, blocked drains, blocked roads, low-lying access points, and safe shelter access. Public messages should identify unsafe flooded roads, drainage overflow, shelter directions, and official help channels. Operational decisions should preserve evacuation access and avoid placing relief distribution points where they block narrow lanes or emergency movement.",
+    "metadata": {
+      "published_at": "2024-07-29",
+      "jurisdiction": "India",
+      "tags": "urban_flooding,drainage,municipal_response,government_sop"
+    }
+  }
+]

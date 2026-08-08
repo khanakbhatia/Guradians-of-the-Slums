@@ -7,10 +7,9 @@ flowchart TD
     satellite["Satellite Images"] --> cv["Computer Vision<br/>OpenCV + Pretrained YOLOv8"]
     cv --> graph["Graph AI<br/>NetworkX Road Connectivity"]
     graph --> risk["Risk Engine<br/>Flood + Fire + Overall Risk"]
-    risk --> rag["RAG Retrieval<br/>LangChain + FAISS + Granite Embeddings"]
-    rag --> granite["IBM Granite<br/>Grounded Generation Only"]
-    granite --> beeai["IBM BeeAI<br/>Multi-Agent Orchestration"]
-    beeai --> fastapi["FastAPI AI Service"]
+    risk --> rag["RAG Retrieval<br/>LangChain + FAISS + Local Vectors"]
+    rag --> granite["IBM Granite<br/>Grounded Generation + Agent Orchestration"]
+    granite --> fastapi["FastAPI AI Service"]
     fastapi --> m2["M2 Express Backend"]
     m2 --> m1["M1 React Frontend"]
 ```
@@ -73,9 +72,9 @@ Output:
 - scores
 - source metadata
 
-### Granite
+### IBM Granite Grounded Generation
 
-Generates only RAG-grounded text. It blocks responses when no grounding context is retrieved.
+Generates only RAG-grounded text. It blocks report/alert responses when no grounding context is retrieved.
 
 Output:
 
@@ -86,7 +85,7 @@ Output:
 - multilingual alerts
 - citations
 
-### BeeAI
+### Granite-Backed Agents
 
 Coordinates specialized agents:
 

@@ -105,5 +105,9 @@ def stable_cache_key(namespace: str, payload: BaseModel | dict | str) -> str:
 graph_cache = TTLCache(default_ttl_seconds=300, max_entries=256)
 risk_cache = TTLCache(default_ttl_seconds=300, max_entries=256)
 rag_cache = TTLCache(default_ttl_seconds=600, max_entries=256)
-granite_cache = TTLCache(default_ttl_seconds=900, max_entries=128)
-beeai_cache = TTLCache(default_ttl_seconds=300, max_entries=64)
+granite_generation_cache = TTLCache(default_ttl_seconds=900, max_entries=128)
+granite_agent_cache = TTLCache(default_ttl_seconds=300, max_entries=64)
+
+# Compatibility aliases for existing imports and API schema field names.
+granite_cache = granite_generation_cache
+beeai_cache = granite_agent_cache

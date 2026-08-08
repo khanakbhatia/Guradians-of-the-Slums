@@ -1,4 +1,4 @@
-"""Communication records for BeeAI task delegation and reasoning traces."""
+"""Communication records for Granite task delegation and reasoning traces."""
 
 from __future__ import annotations
 

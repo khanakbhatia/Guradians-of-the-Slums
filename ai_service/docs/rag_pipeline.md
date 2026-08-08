@@ -2,7 +2,7 @@
 
 This pipeline prepares and retrieves disaster-response knowledge contexts only.
 
-No report generation, summarization, recommendations, or Granite completions are performed here.
+No report generation, summarization, recommendations, or IBM Granite completions are performed here.
 
 ## Knowledge Sources
 
@@ -18,9 +18,8 @@ No report generation, summarization, recommendations, or Granite completions are
 flowchart LR
     sources["Knowledge Sources"] --> loader["LangChain Document Loading"]
     loader --> chunks["Chunking"]
-    chunks --> embeddings["IBM Granite Embeddings if configured"]
-    embeddings --> fallback["Local deterministic fallback if Granite unavailable"]
-    fallback --> faiss["FAISS Index"]
+    chunks --> embeddings["Local deterministic embeddings"]
+    embeddings --> faiss["FAISS Index"]
     faiss --> retrieval["Top-K Context Retrieval"]
     retrieval --> json["Structured JSON Contexts"]
 ```

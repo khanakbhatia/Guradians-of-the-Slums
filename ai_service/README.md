@@ -10,8 +10,7 @@ This scaffold intentionally contains no implementation logic. It defines the mod
 - GeoPandas and Rasterio geospatial processing
 - NumPy and Pandas feature engineering
 - FAISS and LangChain retrieval
-- IBM watsonx.ai SDK and IBM Granite generation
-- IBM BeeAI multi-agent orchestration
+- IBM Granite grounded generation and Granite-backed multi-agent orchestration
 - Risk prediction, explainability, volunteer matching, and evacuation planning
 
 ## Service Boundary
@@ -20,4 +19,4 @@ This service owns AI workflows only. React frontend work, Express backend busine
 
 ## Top-Level Flow
 
-Satellite imagery and external signals enter through ingestion pipelines, are prepared by IBM Data Prep Kit, analyzed by CV and geospatial modules, converted into graph and risk features, retrieved through RAG, reasoned over by Granite, coordinated by BeeAI agents, and exposed through FastAPI routers.
+Satellite imagery and external signals enter through ingestion pipelines, are prepared by IBM Data Prep Kit, analyzed by CV and geospatial modules, converted into graph and risk features, retrieved through RAG, reasoned over and coordinated through local IBM Granite, and exposed through FastAPI routers.

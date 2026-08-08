@@ -3,6 +3,8 @@
 These routes are thin JSON facades over the versioned M3 AI services.
 """
 
+import logging
+
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from app.schemas.agents import BeeAIOrchestrationRequest, BeeAIOrchestrationResponse
@@ -22,6 +24,7 @@ from app.services.risk.risk_engine import RiskScoringEngine
 from app.services.vision.cv_analyzer import ImageGeoReference, SatelliteVisionAnalyzer
 
 router = APIRouter(tags=["m2-facade"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("/detect", response_model=VisionAnalysisResponse)
@@ -100,7 +103,7 @@ async def evacuate(request: EvacuationPlanningRequest) -> EvacuationPlanningResp
 
 @router.post("/report", response_model=GraniteGenerationResponse)
 async def report(request: GraniteGenerationRequest) -> GraniteGenerationResponse:
-    """Generate a RAG-grounded Granite report or alert."""
+    """Generate a RAG-grounded IBM Granite report or alert."""
 
     try:
         return GraniteClient().generate(request)
@@ -110,9 +113,12 @@ async def report(request: GraniteGenerationRequest) -> GraniteGenerationResponse
 
 @router.post("/chat", response_model=BeeAIOrchestrationResponse)
 async def chat(request: BeeAIOrchestrationRequest) -> BeeAIOrchestrationResponse:
-    """Run the BeeAI multi-agent incident assistant."""
+    """Run the Granite-backed multi-agent incident assistant."""
 
-    return await BeeAIDisasterCoordinator().run(request)
+    logger.warning("POST /chat accepted for incident_id=%s", request.incident_id)
+    response = await BeeAIDisasterCoordinator().run(request)
+    logger.warning("POST /chat completed for incident_id=%s status=%s", request.incident_id, response.status)
+    return response
 
 
 def _geo_reference(

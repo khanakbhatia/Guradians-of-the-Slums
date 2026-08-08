@@ -1,4 +1,4 @@
-"""BeeAI agent role definitions."""
+"""Granite agent role definitions."""
 
 from app.schemas.agents import BeeAIAgentDefinition, BeeAIAgentName, BeeAIWorkflowStep
 
@@ -9,7 +9,7 @@ AGENT_DEFINITIONS = [
         display_name="Risk Analyst",
         role="Analyzes flood, fire, infrastructure, and evacuation risk signals.",
         goal="Identify the most urgent risks, confidence, and feature drivers using available AI service outputs.",
-        memory="Workflow shared context plus BeeAI conversation memory during the incident run.",
+        memory="Workflow shared context plus Granite-backed incident memory during the incident run.",
         tools=["risk_scoring_tool", "rag_retrieval_tool"],
         output="Risk summary with score drivers, uncertainty, and visualization-ready findings.",
     ),
@@ -18,7 +18,7 @@ AGENT_DEFINITIONS = [
         display_name="Volunteer Coordinator",
         role="Maps response needs to volunteer capacity and NGO field operations.",
         goal="Prioritize volunteer actions, staging needs, safety checks, and coordination gaps.",
-        memory="Workflow shared context plus prior specialist outputs in the same BeeAI run.",
+        memory="Workflow shared context plus prior specialist outputs in the same Granite run.",
         tools=["rag_retrieval_tool", "grounded_granite_tool"],
         output="Volunteer tasking plan with grounded safety constraints and handoff notes.",
     ),
@@ -44,7 +44,7 @@ AGENT_DEFINITIONS = [
         name=BeeAIAgentName.REPORT_GENERATOR,
         display_name="Report Generator",
         role="Creates grounded incident reports, NGO plans, and authority briefings.",
-        goal="Generate formal outputs using Granite only through retrieved RAG grounding.",
+        goal="Generate formal outputs using IBM Granite only through retrieved RAG grounding.",
         memory="Workflow shared context plus all previous specialist outputs.",
         tools=["grounded_granite_tool", "rag_retrieval_tool"],
         output="Grounded incident report, NGO action plan, and authority briefing sections.",
@@ -127,7 +127,7 @@ def build_workflow_steps(
             step_id="grounded-reporting",
             agent=BeeAIAgentName.REPORT_GENERATOR,
             prompt=(
-                "Generate grounded formal response outputs using only RAG-backed Granite tools. "
+                "Generate grounded formal response outputs using only RAG-backed IBM Granite tools. "
                 f"Required outputs: {', '.join(report_outputs)}. Incident: {incident_context}"
             ),
             expected_output="Grounded formal outputs with citations and explicit information gaps.",

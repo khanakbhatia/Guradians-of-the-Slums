@@ -19,7 +19,7 @@ RISK_ENGINE_VERSION = "deterministic-v1"
 
 
 class RiskScoringEngine:
-    """Score flood, fire, and overall risk without ML or Granite."""
+    """Score flood, fire, and overall risk without ML or LLM generation."""
 
     def __init__(self) -> None:
         self.feature_builder = RiskFeatureBuilder()

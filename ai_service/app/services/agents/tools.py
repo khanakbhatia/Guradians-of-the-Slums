@@ -1,10 +1,8 @@
-"""BeeAI tools that bridge agents to existing FastAPI service modules."""
+"""Granite workflow tools that bridge agents to existing service modules."""
 
 from __future__ import annotations
 
 import json
-
-from beeai_framework.tools import StringToolOutput, tool
 
 from app.schemas.granite import GraniteGenerationRequest
 from app.schemas.rag import RagRetrievalRequest
@@ -16,8 +14,7 @@ from app.services.rag.retriever import RagRetrievalService
 from app.services.risk.risk_engine import RiskScoringEngine
 
 
-@tool
-def rag_retrieval_tool(payload_json: str) -> StringToolOutput:
+def rag_retrieval_tool(payload_json: str) -> str:
     """
     Retrieve grounded disaster-response context from the RAG index.
 
@@ -27,13 +24,12 @@ def rag_retrieval_tool(payload_json: str) -> StringToolOutput:
 
     request = RagRetrievalRequest.model_validate_json(payload_json)
     response = RagRetrievalService().retrieve(request)
-    return StringToolOutput(response.model_dump_json())
+    return response.model_dump_json()
 
 
-@tool
-def grounded_granite_tool(payload_json: str) -> StringToolOutput:
+def grounded_granite_tool(payload_json: str) -> str:
     """
-    Generate a grounded Granite output after RAG retrieval.
+    Generate a grounded IBM Granite output after RAG retrieval.
 
     Args:
         payload_json: JSON matching GraniteGenerationRequest.
@@ -41,11 +37,10 @@ def grounded_granite_tool(payload_json: str) -> StringToolOutput:
 
     request = GraniteGenerationRequest.model_validate_json(payload_json)
     response = GraniteClient().generate(request)
-    return StringToolOutput(response.model_dump_json())
+    return response.model_dump_json()
 
 
-@tool
-def risk_scoring_tool(payload_json: str) -> StringToolOutput:
+def risk_scoring_tool(payload_json: str) -> str:
     """
     Score flood, fire, and overall risk from prepared AI outputs.
 
@@ -55,11 +50,10 @@ def risk_scoring_tool(payload_json: str) -> StringToolOutput:
 
     request = RiskScoringRequest.model_validate_json(payload_json)
     response = RiskScoringEngine().score(request)
-    return StringToolOutput(response.model_dump_json())
+    return response.model_dump_json()
 
 
-@tool
-def graph_analysis_tool(payload_json: str) -> StringToolOutput:
+def graph_analysis_tool(payload_json: str) -> str:
     """
     Return graph-analysis guidance when road graph output is supplied.
 
@@ -68,11 +62,10 @@ def graph_analysis_tool(payload_json: str) -> StringToolOutput:
     """
 
     payload = json.loads(payload_json)
-    return StringToolOutput(json.dumps(payload))
+    return json.dumps(payload)
 
 
-@tool
-def resource_allocation_tool(payload_json: str) -> StringToolOutput:
+def resource_allocation_tool(payload_json: str) -> str:
     """
     Allocate emergency resources using deterministic explainable scoring.
 
@@ -82,16 +75,16 @@ def resource_allocation_tool(payload_json: str) -> StringToolOutput:
 
     request = ResourceAllocationRequest.model_validate_json(payload_json)
     response = ResourceAllocationAgent().allocate(request)
-    return StringToolOutput(response.model_dump_json())
+    return response.model_dump_json()
 
 
-def all_disaster_tools() -> list:
-    """Return the BeeAI tools shared by the multi-agent workflow."""
+def all_disaster_tools() -> dict[str, object]:
+    """Return the tools shared by the Granite multi-agent workflow."""
 
-    return [
-        rag_retrieval_tool,
-        grounded_granite_tool,
-        risk_scoring_tool,
-        graph_analysis_tool,
-        resource_allocation_tool,
-    ]
+    return {
+        "rag_retrieval_tool": rag_retrieval_tool,
+        "grounded_granite_tool": grounded_granite_tool,
+        "risk_scoring_tool": risk_scoring_tool,
+        "graph_analysis_tool": graph_analysis_tool,
+        "resource_allocation_tool": resource_allocation_tool,
+    }

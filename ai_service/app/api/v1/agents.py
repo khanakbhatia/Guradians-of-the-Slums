@@ -1,4 +1,4 @@
-"""BeeAI orchestration API endpoints."""
+"""Granite-backed orchestration API endpoints."""
 
 from fastapi import APIRouter
 
@@ -12,12 +12,12 @@ from app.services.agents.resource_allocation_agent import ResourceAllocationAgen
 from app.services.agents.coordinator import BeeAIDisasterCoordinator
 from app.services.agents.definitions import AGENT_DEFINITIONS
 
-router = APIRouter(prefix="/agents", tags=["beeai-agents"])
+router = APIRouter(prefix="/agents", tags=["granite-agents"])
 
 
 @router.get("/definitions", response_model=list[BeeAIAgentDefinition])
 async def get_agent_definitions() -> list[BeeAIAgentDefinition]:
-    """Return role, goal, memory, tools, and output for each BeeAI agent."""
+    """Return role, goal, memory, tools, and output for each Granite-backed agent."""
 
     return AGENT_DEFINITIONS
 
@@ -26,7 +26,7 @@ async def get_agent_definitions() -> list[BeeAIAgentDefinition]:
 async def orchestrate_incident(
     request: BeeAIOrchestrationRequest,
 ) -> BeeAIOrchestrationResponse:
-    """Run the BeeAI disaster-response multi-agent workflow."""
+    """Run the Granite-backed disaster-response multi-agent workflow."""
 
     return await BeeAIDisasterCoordinator().run(request)
 

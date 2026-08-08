@@ -1,1 +1,1 @@
-"""BeeAI multi-agent service boundary."""
+"""Granite-backed multi-agent service boundary."""

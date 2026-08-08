@@ -1,27 +1,17 @@
-"""Shared BeeAI incident memory for agent communication."""
+"""Shared Granite incident memory for agent communication."""
 
 from __future__ import annotations
 
 from uuid import uuid4
 
-from beeai_framework.backend import AssistantMessage, UserMessage
-from beeai_framework.memory import UnconstrainedMemory
-
 from app.schemas.agents import BeeAISharedMemoryEntry
 
 
 class BeeAIIncidentMemory:
-    """Wrap BeeAI memory and expose a JSON-safe memory log."""
+    """Expose a JSON-safe shared memory log for the Granite workflow."""
 
     def __init__(self) -> None:
-        self._memory = UnconstrainedMemory()
         self.entries: list[BeeAISharedMemoryEntry] = []
-
-    @property
-    def beeai_memory(self) -> UnconstrainedMemory:
-        """Return the native BeeAI memory object."""
-
-        return self._memory
 
     async def add_user_context(
         self,
@@ -30,9 +20,8 @@ class BeeAIIncidentMemory:
         related_step_id: str | None = None,
         attempt: int = 0,
     ) -> None:
-        """Add user/coordinator context to BeeAI memory."""
+        """Add user/coordinator context to shared memory."""
 
-        await self._memory.add(UserMessage(content=content))
         self.entries.append(
             BeeAISharedMemoryEntry(
                 memory_id=str(uuid4()),
@@ -51,9 +40,8 @@ class BeeAIIncidentMemory:
         related_step_id: str,
         attempt: int,
     ) -> None:
-        """Add agent output to BeeAI memory."""
+        """Add agent output to shared memory."""
 
-        await self._memory.add(AssistantMessage(content=content))
         self.entries.append(
             BeeAISharedMemoryEntry(
                 memory_id=str(uuid4()),

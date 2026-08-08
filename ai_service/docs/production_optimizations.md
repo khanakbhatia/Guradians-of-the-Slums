@@ -6,7 +6,7 @@ Implemented:
 
 - process-local TTL cache in `app/core/cache.py`
 - stable request hashing for deterministic reuse
-- graph, risk, RAG, Granite, and BeeAI cache namespaces
+- graph, risk, RAG, Granite generation, and Granite agent cache namespaces
 
 Recommended production upgrade:
 
@@ -30,12 +30,12 @@ Recommended production upgrade:
 
 Implemented:
 
-- BeeAI incident shared memory for multi-agent context
+- Granite incident shared memory for multi-agent context
 - bounded process caches to prevent unbounded growth
 
 Recommended production upgrade:
 
-- persist BeeAI memory summaries to MongoDB through M2
+- persist Granite workflow memory summaries to MongoDB through M2
 - store only summaries and IDs in agent memory, not full raw imagery or long reports
 
 ## Latency
@@ -79,13 +79,13 @@ Recommended production upgrade:
 
 - call Granite only for user-facing natural language artifacts
 - reuse one grounded generation for authority and admin summaries when possible
-- use smaller Granite models for alerts and larger models only for briefings
+- use lower-latency local Granite model settings for alerts and richer local Granite settings for briefings when available
 
 ## Result Reuse
 
 Implemented:
 
-- Graph AI, Risk, RAG, Granite, and BeeAI outputs are cacheable by request hash
+- Graph AI, Risk, RAG, Granite generation, and Granite agent outputs are cacheable by request hash
 
 Recommended production upgrade:
 

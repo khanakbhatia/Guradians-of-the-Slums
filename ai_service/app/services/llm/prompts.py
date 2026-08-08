@@ -1,7 +1,7 @@
-"""Reusable grounded Granite prompt templates.
+"""Reusable grounded IBM Granite prompt templates.
 
 Templates only. These prompts are designed for RAG-grounded generation and
-must be rendered with retrieved context before being sent to Granite.
+must be rendered with retrieved context before being sent to IBM Granite.
 """
 
 GROUNDING_RULES = """

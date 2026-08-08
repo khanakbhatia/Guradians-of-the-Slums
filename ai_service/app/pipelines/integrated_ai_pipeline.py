@@ -6,8 +6,8 @@ import asyncio
 from typing import TypeVar, cast
 
 from app.core.cache import (
-    beeai_cache,
-    granite_cache,
+    granite_agent_cache,
+    granite_generation_cache,
     graph_cache,
     rag_cache,
     risk_cache,
@@ -33,7 +33,7 @@ T = TypeVar("T")
 
 
 class IntegratedAIPipeline:
-    """Compose CV, Graph AI, Risk, RAG, Granite, and BeeAI outputs."""
+    """Compose CV, Graph AI, Risk, RAG, Granite generation, and Granite agents."""
 
     async def run(self, request: IntegratedPipelineRequest) -> IntegratedPipelineResponse:
         """Run available pipeline stages and return JSON stage trace."""
@@ -76,38 +76,38 @@ class IntegratedAIPipeline:
         granite_output = None
         if request.granite_input:
             try:
-                granite_output = granite_cache.get_or_set(
-                    stable_cache_key("granite", request.granite_input),
+                granite_output = granite_generation_cache.get_or_set(
+                    stable_cache_key("granite-generation", request.granite_input),
                     lambda: GraniteClient().generate(request.granite_input),
                 )
                 statuses.append(
                     self._status(
-                        "granite",
+                        "granite_generation",
                         "completed",
                         "Grounded Granite generation completed or reused from cache.",
                     )
                 )
             except GraniteGroundingError as exc:
-                statuses.append(self._status("granite", "blocked", str(exc)))
+                statuses.append(self._status("granite_generation", "blocked", str(exc)))
             except Exception as exc:  # pragma: no cover - defensive boundary for external SDKs
-                statuses.append(self._status("granite", "failed", self._failure_message(exc)))
+                statuses.append(self._status("granite_generation", "failed", self._failure_message(exc)))
         else:
-            statuses.append(self._status("granite", "skipped", "No Granite generation input provided."))
+            statuses.append(self._status("granite_generation", "skipped", "No Granite generation input provided."))
 
         beeai_output = None
         if request.beeai_input:
-            beeai_key = stable_cache_key("beeai", request.beeai_input)
-            cached_beeai = beeai_cache.get(beeai_key)
+            beeai_key = stable_cache_key("granite-agent", request.beeai_input)
+            cached_beeai = granite_agent_cache.get(beeai_key)
             if cached_beeai is None:
                 beeai_output = await BeeAIDisasterCoordinator().run(request.beeai_input)
-                beeai_cache.set(beeai_key, beeai_output)
+                granite_agent_cache.set(beeai_key, beeai_output)
             else:
                 beeai_output = cast("BeeAIOrchestrationResponse", cached_beeai)
             statuses.append(
-                self._status("beeai", "completed", "BeeAI orchestration completed or reused from cache.")
+                self._status("granite_agents", "completed", "Granite orchestration completed or reused from cache.")
             )
         else:
-            statuses.append(self._status("beeai", "skipped", "No BeeAI orchestration input provided."))
+            statuses.append(self._status("granite_agents", "skipped", "No Granite orchestration input provided."))
 
         statuses.append(
             self._status("fastapi", "completed", "Pipeline response prepared for M2 backend.")
@@ -126,7 +126,7 @@ class IntegratedAIPipeline:
                 "ready": True,
                 "contract": "JSON",
                 "recommended_endpoint": "/api/v1/pipeline/run",
-                "optimization": "parallel_graph_risk_rag_with_ttl_cache",
+                "optimization": "parallel_graph_risk_rag_with_granite_ttl_cache",
             },
         )
 
