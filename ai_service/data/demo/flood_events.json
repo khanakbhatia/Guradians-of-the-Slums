@@ -1,0 +1,53 @@
+{
+  "scenario": "synthetic_historical_flood_events",
+  "events": [
+    {
+      "event_id": "HF-MUM-DHA-2019-01",
+      "city": "Mumbai",
+      "settlement": "Dharavi Transit Camp",
+      "event_type": "urban_flood",
+      "event_start_utc": "2019-07-02T00:00:00Z",
+      "event_end_utc": "2019-07-03T18:00:00Z",
+      "flood_depth_m": 0.6,
+      "affected_buildings": 430,
+      "displaced_people": 1250,
+      "severity_score": 0.82,
+      "years_ago": 7,
+      "impact_summary": "Low-lying lanes flooded after intense monsoon rainfall and blocked stormwater drains.",
+      "source_name": "synthetic_municipal_disaster_log",
+      "source_confidence": 0.8
+    },
+    {
+      "event_id": "HF-DEL-YP-2023-01",
+      "city": "Delhi",
+      "settlement": "Yamuna Pushta Cluster",
+      "event_type": "riverine_flood",
+      "event_start_utc": "2023-07-12T06:00:00Z",
+      "event_end_utc": "2023-07-15T12:00:00Z",
+      "flood_depth_m": 1.1,
+      "affected_buildings": 270,
+      "displaced_people": 2100,
+      "severity_score": 0.91,
+      "years_ago": 3,
+      "impact_summary": "Temporary shelters near the river edge required relocation as water levels rose.",
+      "source_name": "synthetic_relief_assessment",
+      "source_confidence": 0.86
+    },
+    {
+      "event_id": "HF-KOL-TOP-2021-01",
+      "city": "Kolkata",
+      "settlement": "Topsia Canal Basti",
+      "event_type": "drainage_backflow",
+      "event_start_utc": "2021-09-20T04:00:00Z",
+      "event_end_utc": "2021-09-20T22:00:00Z",
+      "flood_depth_m": 0.45,
+      "affected_buildings": 190,
+      "displaced_people": 420,
+      "severity_score": 0.68,
+      "years_ago": 5,
+      "impact_summary": "Canal-adjacent lanes flooded when drains backed up during high tide and rainfall.",
+      "source_name": "synthetic_ngo_report",
+      "source_confidence": 0.77
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "incident_id": "demo-monsoon-2026-08-07",
+  "required_skills": ["first_aid", "evacuation_support", "local_language", "food_distribution"],
+  "incident_severity": "high",
+  "max_distance_km": 10,
+  "volunteers": [
+    {
+      "volunteer_id": "VOL-MUM-101",
+      "name": "Asha Patil",
+      "skills": ["first_aid", "local_language", "evacuation_support"],
+      "distance_km": 1.4,
+      "available_now": true,
+      "available_hours": 6,
+      "trust_score": 0.91
+    },
+    {
+      "volunteer_id": "VOL-MUM-118",
+      "name": "Imran Shaikh",
+      "skills": ["food_distribution", "logistics", "local_language"],
+      "distance_km": 2.2,
+      "available_now": true,
+      "available_hours": 8,
+      "trust_score": 0.86
+    },
+    {
+      "volunteer_id": "VOL-DEL-044",
+      "name": "Neha Yadav",
+      "skills": ["evacuation_support", "crowd_management", "local_language"],
+      "distance_km": 3.8,
+      "available_now": true,
+      "available_hours": 5,
+      "trust_score": 0.83
+    },
+    {
+      "volunteer_id": "VOL-KOL-072",
+      "name": "Rafiq Alam",
+      "skills": ["water_sanitation", "food_distribution", "local_language"],
+      "distance_km": 1.9,
+      "available_now": false,
+      "available_hours": 0,
+      "trust_score": 0.78
+    },
+    {
+      "volunteer_id": "VOL-BLR-033",
+      "name": "Lakshmi R",
+      "skills": ["medical", "first_aid", "shelter_management"],
+      "distance_km": 4.6,
+      "available_now": true,
+      "available_hours": 4,
+      "trust_score": 0.94
+    }
+  ]
+}
