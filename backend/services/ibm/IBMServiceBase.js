@@ -2,17 +2,21 @@
  * services/ibm/IBMServiceBase.js
  * Shared contract for every IBM service wrapper (Granite, BeeAI, watsonx,
  * RAG, Data Prep Kit). This file defines WHAT each wrapper exposes and
- * WHY — it does not call any IBM API, does not construct a prompt, and
- * does not contain any AI logic. Every method throws until a real
- * implementation replaces it; that's intentional, not an oversight —
- * silently returning fake data would be worse than a clear 501, because
- * calling code could mistake a stub response for a real one.
+ * WHY. It does not call any IBM API and does not construct a prompt
+ * itself — every subclass now delegates its real work to the Python
+ * ai_service (FastAPI + BeeAI + IBM Granite) over HTTP via
+ * services/ibm/aiServiceClient.js; this base class only owns the shared
+ * four-method interface and the "not yet wired to an ai_service
+ * endpoint" fallback for methods that genuinely have no real
+ * implementation yet (see services/ibm/dataPrep.service.js).
  *
  * Every subclass exposes the same four methods so callers (services,
  * and eventually an orchestration layer) can treat any IBM service
  * interchangeably at the interface level, even though each one's
- * REAL eventual implementation will do something quite different under
- * each method name — see the per-service role notes in each subclass file.
+ * REAL implementation does something quite different under each method
+ * name — see the per-service role notes in each subclass file, and
+ * routes/v1/ai.routes.js for the route -> wrapper -> ai_service endpoint
+ * mapping.
  */
 
 const ApiError = require('../../utils/ApiError');
@@ -20,7 +24,7 @@ const ApiError = require('../../utils/ApiError');
 class IBMServiceBase {
   /**
    * @param {string} serviceName - used in error messages and isConfigured() diagnostics
-   * @param {string[]} requiredEnvVars - keys into config/env.js this service needs before it can be considered "configured" (does not verify the credentials are *valid*, only that they're *present*)
+   * @param {string[]} requiredEnvVars - keys into config/env.js this service needs before it can be considered "configured". Every subclass now really only needs AI_SERVICE_URL (the ai_service HTTP boundary handles the actual IBM Granite/BeeAI credentials on the Python side — see ai_service/.env.example); any other vars listed here are legacy/reserved and checked for parity, not because Node reads them directly.
    */
   constructor(serviceName, requiredEnvVars = []) {
     if (new.target === IBMServiceBase) {
@@ -42,12 +46,18 @@ class IBMServiceBase {
     return this.requiredEnvVars.every((key) => Boolean(env[key]));
   }
 
-  /** Every stub method routes through here — one place that defines the "not implemented" contract. */
+  /**
+   * Every method that has no corresponding ai_service endpoint yet (or
+   * isn't wired to any Node route today) routes through here — one place
+   * that defines the "not implemented" contract. This is intentionally
+   * still a hard 501, not a silent fallback: a stub response that looked
+   * like a real one would be worse than a clear "not implemented" error.
+   */
   _notImplemented(methodName) {
     throw new ApiError(
       501,
-      `${this.serviceName}.${methodName}() is architecture-only — no AI logic implemented. ` +
-        'Replace this method body with the real IBM SDK/API call when that constraint is lifted.'
+      `${this.serviceName}.${methodName}() has no ai_service endpoint wired up yet. ` +
+        'See the TODO comment on this method for the endpoint that would back it once available.'
     );
   }
 

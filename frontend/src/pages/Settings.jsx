@@ -50,8 +50,8 @@ function Settings() {
   const [notifications, setNotifications] = useState(true);
   const [criticalOnly, setCriticalOnly] = useState(false);
 
-  function handleLogout() {
-    logout();
+  async function handleLogout() {
+    await logout();
     navigate(ROUTES.LOGIN);
   }
 

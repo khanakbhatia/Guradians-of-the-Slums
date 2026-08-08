@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { LogIn } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
-import { ROLES, ROLE_HOME_ROUTE, ROLE_LABELS, ROUTES } from "@/constants";
+import { ROLE_HOME_ROUTE, ROUTES } from "@/constants";
 import { validateEmail, validateRequired } from "@/lib/validation";
 
 import AuthCard from "@/pages/auth/AuthCard";
@@ -12,10 +12,9 @@ import PasswordField from "@/pages/auth/PasswordField";
 
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Muted } from "@/components/ui/typography";
 
 function Login() {
-  const { login, loginAs } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname;
@@ -41,21 +40,8 @@ function Login() {
 
     setSubmitting(true);
     try {
-      const session = await login(form);
-      navigate(from || ROLE_HOME_ROUTE[session.role], { replace: true });
-    } catch (err) {
-      setFormError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleQuickLogin(role) {
-    setFormError("");
-    setSubmitting(true);
-    try {
-      const session = await loginAs(role);
-      navigate(ROLE_HOME_ROUTE[session.role], { replace: true });
+      const account = await login(form);
+      navigate(from || ROLE_HOME_ROUTE[account.role], { replace: true });
     } catch (err) {
       setFormError(err.message);
     } finally {
@@ -119,28 +105,6 @@ function Login() {
           <LogIn className="size-4" /> Sign in
         </Button>
       </form>
-
-      <div className="my-4 flex items-center gap-3">
-        <div className="h-px flex-1 bg-border" />
-        <Muted className="text-2xs uppercase tracking-wide">Demo quick access</Muted>
-        <div className="h-px flex-1 bg-border" />
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        {Object.values(ROLES).map((role) => (
-          <Button
-            key={role}
-            variant="outline"
-            size="sm"
-            type="button"
-            disabled={submitting}
-            onClick={() => handleQuickLogin(role)}
-            className="border-border-strong bg-secondary/40 hover:bg-accent"
-          >
-            {ROLE_LABELS[role]}
-          </Button>
-        ))}
-      </div>
     </AuthCard>
   );
 }

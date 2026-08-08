@@ -15,6 +15,17 @@ function riskColor(risk) {
   return "hsl(var(--success))";
 }
 
+// RiskZone.geometry is a GeoJSON Polygon (ring of [lng,lat] pairs), not a
+// single point — there's no lat/lng field on the model. Averaging the
+// ring's vertices gives a reasonable marker position for a simple
+// CircleMarker; it's not a true polygon render, just a stand-in centroid.
+function centroid(geometry) {
+  const ring = geometry?.coordinates?.[0] ?? [];
+  if (ring.length === 0) return null;
+  const [lngSum, latSum] = ring.reduce(([lng, lat], [pLng, pLat]) => [lng + pLng, lat + pLat], [0, 0]);
+  return [latSum / ring.length, lngSum / ring.length];
+}
+
 /**
  * PLACEHOLDER: renders live zone-risk data on a real Leaflet map, but
  * circles (not a proper heat layer) still stand in for a real heatmap
@@ -58,25 +69,29 @@ function RiskHeatmap({ className }) {
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-                {zones.map((zone) => (
-                  <CircleMarker
-                    key={zone.id}
-                    center={[zone.lat, zone.lng]}
-                    radius={10 + zone.incidents}
-                    pathOptions={{
-                      color: riskColor(zone.risk),
-                      fillColor: riskColor(zone.risk),
-                      fillOpacity: 0.35,
-                      weight: 1.5,
-                    }}
-                  >
-                    <Tooltip direction="top" offset={[0, -6]}>
-                      <span className="font-mono text-2xs">
-                        {zone.name} — risk {zone.risk}, {zone.incidents} incidents
-                      </span>
-                    </Tooltip>
-                  </CircleMarker>
-                ))}
+                {zones.map((zone) => {
+                  const center = centroid(zone.geometry);
+                  if (!center) return null;
+                  return (
+                    <CircleMarker
+                      key={zone.id}
+                      center={center}
+                      radius={12}
+                      pathOptions={{
+                        color: riskColor(zone.riskScore),
+                        fillColor: riskColor(zone.riskScore),
+                        fillOpacity: 0.35,
+                        weight: 1.5,
+                      }}
+                    >
+                      <Tooltip direction="top" offset={[0, -6]}>
+                        <span className="font-mono text-2xs">
+                          {zone.name || zone.settlement} — risk {zone.riskScore}
+                        </span>
+                      </Tooltip>
+                    </CircleMarker>
+                  );
+                })}
               </MapContainer>
             </div>
 

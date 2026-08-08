@@ -1,105 +1,72 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { ROLES } from "@/constants";
+
+import api from "@/lib/axios";
+import { ENDPOINTS } from "@/api/endpoints";
 
 const AuthContext = createContext(undefined);
-const SESSION_KEY = "gots_session";
-const USERS_KEY = "gots_users";
+const TOKEN_KEY = "accessToken";
 
 /**
- * DUMMY AUTHENTICATION — no backend, no real security.
- * Users are stored in localStorage purely so the frontend flows
- * (register -> login -> protected routes -> logout) work end to end
- * for the hackathon demo. Replace with real auth wiring later.
+ * Real authentication, wired to the backend's /auth endpoints.
+ * - Access token lives in localStorage (see src/lib/axios.js's request
+ *   interceptor, which reads the same key).
+ * - Session is restored on load by calling GET /auth/me with whatever
+ *   token is stored — if it's missing/expired that just resolves to
+ *   "logged out" rather than throwing.
  */
-
-const SEED_USERS = [
-  { id: "u_authority", name: "Rahul Mehta", email: "authority@demo.io", password: "demo1234", role: ROLES.AUTHORITY },
-  { id: "u_volunteer", name: "Ayesha Khan", email: "volunteer@demo.io", password: "demo1234", role: ROLES.VOLUNTEER },
-  { id: "u_citizen", name: "Sam Fernandes", email: "citizen@demo.io", password: "demo1234", role: ROLES.CITIZEN },
-  { id: "u_admin", name: "Meera Iyer", email: "admin@demo.io", password: "demo1234", role: ROLES.ADMIN },
-];
-
-function readUsers() {
-  const raw = localStorage.getItem(USERS_KEY);
-  if (!raw) {
-    localStorage.setItem(USERS_KEY, JSON.stringify(SEED_USERS));
-    return SEED_USERS;
-  }
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return SEED_USERS;
-  }
-}
-
-function writeUsers(users) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
-
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Restore session on mount
+  // Restore session on mount.
   useEffect(() => {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (raw) {
-      try {
-        setUser(JSON.parse(raw));
-      } catch {
-        localStorage.removeItem(SESSION_KEY);
-      }
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) {
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+    api
+      .get(ENDPOINTS.ME)
+      .then(({ data }) => setUser(data.user))
+      .catch(() => {
+        // Invalid/expired token — the axios 401 interceptor already
+        // clears it and would redirect, but guard here too in case this
+        // resolves before that runs.
+        localStorage.removeItem(TOKEN_KEY);
+        setUser(null);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
-  /** Simulated network delay so loading states are visible in the UI. */
-  const fakeLatency = (ms = 500) => new Promise((res) => setTimeout(res, ms));
-
   async function login({ email, password }) {
-    await fakeLatency();
-    const users = readUsers();
-    const match = users.find(
-      (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-    );
-    if (!match) {
-      throw new Error("Invalid email or password.");
-    }
-    const session = { id: match.id, name: match.name, email: match.email, role: match.role };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    setUser(session);
-    return session;
+    const { data } = await api.post(ENDPOINTS.LOGIN, { email, password });
+    localStorage.setItem(TOKEN_KEY, data.accessToken);
+    setUser(data.user);
+    return data.user;
   }
 
-  async function register({ name, email, password, role }) {
-    await fakeLatency();
-    const users = readUsers();
-    if (users.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
-      throw new Error("An account with this email already exists.");
-    }
-    const newUser = {
-      id: `u_${Date.now()}`,
-      name,
-      email,
-      password,
-      role: role || ROLES.CITIZEN,
-    };
-    writeUsers([...users, newUser]);
-    const session = { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    setUser(session);
-    return session;
+  /**
+   * Register, then log in immediately with the same credentials.
+   * POST /auth/register only returns the created user (no token — it
+   * triggers a verification email), but the backend's login doesn't
+   * require a verified email to succeed, so chaining the two real
+   * endpoints reproduces the "register -> land in your dashboard" flow
+   * without inventing a combined endpoint.
+   */
+  async function register({ name, email, password, role, phone }) {
+    await api.post(ENDPOINTS.REGISTER, { name, email, password, role, phone });
+    return login({ email, password });
   }
 
-  function logout() {
-    localStorage.removeItem(SESSION_KEY);
+  async function logout() {
+    try {
+      await api.post(ENDPOINTS.LOGOUT);
+    } catch {
+      // Even if the server call fails (e.g. token already expired),
+      // still clear the local session below.
+    }
+    localStorage.removeItem(TOKEN_KEY);
     setUser(null);
-  }
-
-  /** Quick-login helper for demo purposes (used by the "seed" buttons on Login). */
-  async function loginAs(role) {
-    const seed = SEED_USERS.find((u) => u.role === role);
-    return login({ email: seed.email, password: seed.password });
   }
 
   const value = {
@@ -109,7 +76,6 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
-    loginAs,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

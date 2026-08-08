@@ -60,10 +60,28 @@ module.exports = {
   // something to leave on in a shared environment.
   MONGO_DEBUG_LOGGING: process.env.MONGO_DEBUG_LOGGING === 'true',
 
-  // ---- IBM service layer (services/ibm/*) — credentials only, no logic here.
-  // Every one of these is unused until the "no AI" constraint on that layer
-  // is lifted; isConfigured() checks in services/ibm/IBMServiceBase.js read
-  // these to report readiness without making any actual API call.
+  // ---- AI service (services/ibm/*) — the Node backend's only AI
+  // integration point. Node never calls IBM Granite/BeeAI directly; it
+  // delegates to the Python ai_service (FastAPI + BeeAI + IBM Granite,
+  // see ../../ai_service), which owns those integrations internally.
+  // services/ibm/aiServiceClient.js reads these.
+  AI_SERVICE_URL: process.env.AI_SERVICE_URL || 'http://127.0.0.1:8001',
+  AI_SERVICE_TIMEOUT_MS: Number(process.env.AI_SERVICE_TIMEOUT_MS) || 15000,
+  AI_SERVICE_MAX_RETRIES: Number(process.env.AI_SERVICE_MAX_RETRIES) || 2,
+  AI_SERVICE_RETRY_DELAY_MS: Number(process.env.AI_SERVICE_RETRY_DELAY_MS) || 500,
+
+  // ---- Legacy / reserved IBM service layer vars ----
+  // Not read directly by any HTTP call Node makes today — ai_service owns
+  // the actual Granite/BeeAI credentials on its side (see
+  // ai_service/.env.example: GRANITE_BASE_URL/GRANITE_MODEL, which target
+  // a LOCAL Ollama-compatible Granite runtime, not hosted watsonx.ai).
+  // Kept here for two reasons: (1) services/ibm/IBMServiceBase.js#isConfigured()
+  // still reports on them for diagnostics/parity with the original
+  // architecture doc, and (2) IBM_API_KEY/IBM_PROJECT_ID/IBM_URL are
+  // reserved for a future hosted-watsonx.ai Granite backend — if ai_service
+  // is ever pointed at hosted watsonx.ai instead of a local runtime, these
+  // are the variable names to use, decided now so nothing has to invent
+  // new ones later.
   WATSONX_API_KEY: process.env.WATSONX_API_KEY,
   WATSONX_URL: process.env.WATSONX_URL,
   WATSONX_PROJECT_ID: process.env.WATSONX_PROJECT_ID,
@@ -79,4 +97,9 @@ module.exports = {
 
   DATAPREP_ENDPOINT: process.env.DATAPREP_ENDPOINT,
   DATAPREP_API_KEY: process.env.DATAPREP_API_KEY,
+
+  // Reserved — see comment block above. Not read by any code path yet.
+  IBM_API_KEY: process.env.IBM_API_KEY,
+  IBM_PROJECT_ID: process.env.IBM_PROJECT_ID,
+  IBM_URL: process.env.IBM_URL,
 };

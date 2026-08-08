@@ -24,6 +24,16 @@ function defaultActiveState() {
   return Object.fromEntries(MAP_LAYER_CONFIG.map((l) => [l.id, l.defaultOn]));
 }
 
+// RiskZone.geometry is a GeoJSON Polygon (ring of [lng,lat] pairs) — there's
+// no lat/lng field on the model, so a simple vertex average stands in as a
+// marker position (not a true polygon render).
+function centroid(geometry) {
+  const ring = geometry?.coordinates?.[0] ?? [];
+  if (ring.length === 0) return null;
+  const [lngSum, latSum] = ring.reduce(([lng, lat], [pLng, pLat]) => [lng + pLng, lat + pLat], [0, 0]);
+  return { lat: latSum / ring.length, lng: lngSum / ring.length };
+}
+
 /**
  * Fully reusable Leaflet map — a GIS reference view, not a decorative
  * preview. Shelters/hospitals/schools/roads are static fixtures (see
@@ -39,7 +49,20 @@ function GuardiansMap({ className = "h-[480px]" }) {
   const [active, setActive] = useState(defaultActiveState);
   const [selected, setSelected] = useState(null);
 
-  const { data: incidentZones } = useRiskZones();
+  const { data: riskZones } = useRiskZones();
+
+  // Attach a computed lat/lng to each zone once, rather than recomputing
+  // the centroid on every render/marker.
+  const incidentZones = useMemo(
+    () =>
+      (riskZones ?? [])
+        .map((z) => {
+          const c = centroid(z.geometry);
+          return c ? { ...z, lat: c.lat, lng: c.lng } : null;
+        })
+        .filter(Boolean),
+    [riskZones]
+  );
 
   const icons = useMemo(
     () => ({
@@ -73,12 +96,8 @@ function GuardiansMap({ className = "h-[480px]" }) {
       ...SHELTERS.map((s) => ({ id: s.id, name: s.name, lat: s.lat, lng: s.lng, category: "shelter", raw: s })),
       ...HOSPITALS.map((h) => ({ id: h.id, name: h.name, lat: h.lat, lng: h.lng, category: "hospital", raw: h })),
       ...SCHOOLS.map((s) => ({ id: s.id, name: s.name, lat: s.lat, lng: s.lng, category: "school", raw: s })),
+      ...incidentZones.map((z) => ({ id: z.id, name: z.name || z.settlement, lat: z.lat, lng: z.lng, category: "incident", raw: z })),
     ];
-    if (incidentZones) {
-      items.push(
-        ...incidentZones.map((z) => ({ id: z.id, name: z.name, lat: z.lat, lng: z.lng, category: "incident", raw: z }))
-      );
-    }
     return items;
   }, [incidentZones]);
 

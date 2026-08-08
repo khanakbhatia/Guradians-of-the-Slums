@@ -8,10 +8,12 @@
  * and was a deliberate architecture choice, not something M3's callers
  * configure per-request.
  *
- * Every one of these currently resolves to a 501 (via the IBM service
- * layer's _notImplemented()) until the AI logic behind that wrapper
- * method is implemented — that's expected, not a bug. The route/
- * validation/response-shape work is what M3 gets to build against today.
+ * Every wrapper method below now calls the real Python ai_service
+ * (FastAPI + BeeAI + IBM Granite) over HTTP — see services/ibm/*.service.js
+ * and services/ibm/aiServiceClient.js. This controller stays unchanged
+ * from its original architecture-only version on purpose: the whole
+ * point of the services/ibm/* boundary was that real AI logic could land
+ * behind it without touching routing, validation, or response shape here.
  */
 
 const asyncHandler = require('../utils/asyncHandler');

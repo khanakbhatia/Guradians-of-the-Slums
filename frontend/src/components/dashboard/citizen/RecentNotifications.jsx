@@ -44,14 +44,14 @@ function RecentNotifications() {
               onClick={() => markRead.mutate(n.id)}
               className={cn(
                 "flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-accent",
-                !n.read && "bg-primary/5"
+                !n.isRead && "bg-primary/5"
               )}
             >
-              <span className={cn("mt-1.5 size-1.5 shrink-0 rounded-full", n.read ? "bg-transparent" : "bg-primary")} />
+              <span className={cn("mt-1.5 size-1.5 shrink-0 rounded-full", n.isRead ? "bg-transparent" : "bg-primary")} />
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-medium text-foreground">{n.title}</div>
-                <Muted className="mt-0.5">{n.body}</Muted>
-                <Eyebrow className="mt-1 block">{n.time}</Eyebrow>
+                <Muted className="mt-0.5">{n.message}</Muted>
+                <Eyebrow className="mt-1 block">{n.createdAt}</Eyebrow>
               </div>
             </button>
           ))}

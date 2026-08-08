@@ -6,9 +6,14 @@
  * all any caller needs, since these wrappers are stateless besides their
  * config).
  *
- * Usage once real implementations replace the stubs:
+ * Usage:
  *   const { graniteService } = require('../services/ibm');
- *   const report = await graniteService.generateReport({ incidentId });
+ *   const report = await graniteService.generateReport({ incidentContext });
+ *
+ * GraniteService/BeeAIService/WatsonxService call the real ai_service over
+ * HTTP (see aiServiceClient.js); RAGService calls ai_service's retrieval
+ * endpoint directly; DataPrepService remains architecture-only (no
+ * matching ai_service endpoint exists yet — see its file header).
  */
 
 const GraniteService = require('./granite.service');

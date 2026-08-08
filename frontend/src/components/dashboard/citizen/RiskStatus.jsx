@@ -3,7 +3,7 @@ import { MapPin } from "lucide-react";
 import { useRiskStatus } from "@/hooks/queries/useCitizenQueries";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusChip } from "@/components/ui/status-chip";
-import { Eyebrow, DataText } from "@/components/ui/typography";
+import { Eyebrow, DataText, Muted } from "@/components/ui/typography";
 import { Skeleton } from "@/components/ui/skeleton";
 import RiskGauge from "@/components/dashboard/citizen/RiskGauge";
 import ErrorState from "@/components/common/ErrorState";
@@ -38,6 +38,18 @@ function RiskStatus() {
       <Card variant="highlight">
         <CardContent className="p-3.5">
           <ErrorState context="your area status" detail={error?.message} onRetry={refetch} retrying={isRefetching} compact />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // No risk-status resource on the backend yet — show a neutral empty
+  // state rather than assuming the fields below exist.
+  if (!status) {
+    return (
+      <Card variant="highlight">
+        <CardContent className="p-3.5">
+          <Muted>Area risk status isn&apos;t available yet.</Muted>
         </CardContent>
       </Card>
     );
