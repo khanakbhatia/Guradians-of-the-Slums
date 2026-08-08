@@ -1,0 +1,101 @@
+{
+  "scenario": "synthetic_indian_slum_satellite_outputs",
+  "generated_for": "Guardians of the Slums demo",
+  "images": [
+    {
+      "image_id": "mumbai_dharavi_transit_camp_tile_01",
+      "location_name": "Dharavi Transit Camp, Mumbai",
+      "model_name": "yolov8n.pt",
+      "summary": {
+        "image_width": 1024,
+        "image_height": 1024,
+        "building_count": 238,
+        "road_count": 11,
+        "drainage_count": 8,
+        "open_space_count": 2,
+        "roof_density_score": 0.78
+      },
+      "detections": [
+        {
+          "label": "building",
+          "confidence": 0.82,
+          "bounding_box": {"x_min": 120, "y_min": 88, "x_max": 172, "y_max": 141},
+          "geo_coordinates": {
+            "north_west": {"longitude": 72.8569, "latitude": 19.0456},
+            "north_east": {"longitude": 72.8572, "latitude": 19.0456},
+            "south_east": {"longitude": 72.8572, "latitude": 19.0453},
+            "south_west": {"longitude": 72.8569, "latitude": 19.0453}
+          },
+          "source": "opencv_roof_candidate",
+          "metadata": {"area_pixels": 2410, "rectangularity": 0.71}
+        },
+        {
+          "label": "drainage",
+          "confidence": 0.74,
+          "bounding_box": {"x_min": 414, "y_min": 304, "x_max": 760, "y_max": 331},
+          "geo_coordinates": {
+            "north_west": {"longitude": 72.8585, "latitude": 19.0444},
+            "north_east": {"longitude": 72.8605, "latitude": 19.0444},
+            "south_east": {"longitude": 72.8605, "latitude": 19.0442},
+            "south_west": {"longitude": 72.8585, "latitude": 19.0442}
+          },
+          "source": "opencv_dark_linear_drainage",
+          "metadata": {"elongation": 12.8, "area_pixels": 5220}
+        },
+        {
+          "label": "road",
+          "confidence": 0.68,
+          "bounding_box": {"x_min": 86, "y_min": 510, "x_max": 924, "y_max": 552},
+          "geo_coordinates": {
+            "north_west": {"longitude": 72.8567, "latitude": 19.0431},
+            "north_east": {"longitude": 72.8613, "latitude": 19.0431},
+            "south_east": {"longitude": 72.8613, "latitude": 19.0428},
+            "south_west": {"longitude": 72.8567, "latitude": 19.0428}
+          },
+          "source": "opencv_linear_road",
+          "metadata": {"elongation": 19.9, "area_pixels": 17640}
+        },
+        {
+          "label": "roof_density",
+          "confidence": 0.78,
+          "bounding_box": {"x_min": 0, "y_min": 0, "x_max": 1024, "y_max": 1024},
+          "geo_coordinates": null,
+          "source": "opencv_density_metric",
+          "metadata": {"roof_density_score": 0.78}
+        }
+      ]
+    },
+    {
+      "image_id": "delhi_yamuna_pushta_tile_02",
+      "location_name": "Yamuna Pushta Cluster, Delhi",
+      "model_name": "yolov8n.pt",
+      "summary": {
+        "image_width": 1024,
+        "image_height": 1024,
+        "building_count": 171,
+        "road_count": 7,
+        "drainage_count": 5,
+        "open_space_count": 4,
+        "roof_density_score": 0.61
+      },
+      "detections": [
+        {
+          "label": "open_space",
+          "confidence": 0.77,
+          "bounding_box": {"x_min": 70, "y_min": 728, "x_max": 306, "y_max": 914},
+          "geo_coordinates": null,
+          "source": "opencv_open_space_candidate",
+          "metadata": {"area_pixels": 39220}
+        },
+        {
+          "label": "drainage",
+          "confidence": 0.71,
+          "bounding_box": {"x_min": 512, "y_min": 138, "x_max": 548, "y_max": 866},
+          "geo_coordinates": null,
+          "source": "opencv_dark_linear_drainage",
+          "metadata": {"elongation": 20.2, "area_pixels": 18910}
+        }
+      ]
+    }
+  ]
+}

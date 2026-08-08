@@ -1,0 +1,55 @@
+{
+  "scenario": "synthetic_shelters",
+  "shelters": [
+    {
+      "shelter_id": "SH-MUM-001",
+      "name": "Municipal School Hall, Sion Link Road",
+      "city": "Mumbai",
+      "location": {"longitude": 72.8624, "latitude": 19.0463},
+      "capacity": 450,
+      "current_occupancy": 120,
+      "status": "open",
+      "facilities": ["drinking_water", "toilets", "basic_first_aid", "women_child_area"]
+    },
+    {
+      "shelter_id": "SH-MUM-002",
+      "name": "Community Centre Near Mahim Causeway",
+      "city": "Mumbai",
+      "location": {"longitude": 72.8469, "latitude": 19.0449},
+      "capacity": 240,
+      "current_occupancy": 190,
+      "status": "limited",
+      "facilities": ["toilets", "cooked_food_distribution"]
+    },
+    {
+      "shelter_id": "SH-DEL-001",
+      "name": "Government School Relief Camp, Geeta Colony",
+      "city": "Delhi",
+      "location": {"longitude": 77.2632, "latitude": 28.6501},
+      "capacity": 600,
+      "current_occupancy": 260,
+      "status": "open",
+      "facilities": ["drinking_water", "medical_desk", "dry_ration", "charging_point"]
+    },
+    {
+      "shelter_id": "SH-KOL-001",
+      "name": "Ward Community Hall, Topsia Road",
+      "city": "Kolkata",
+      "location": {"longitude": 88.3895, "latitude": 22.5404},
+      "capacity": 320,
+      "current_occupancy": 80,
+      "status": "open",
+      "facilities": ["water_tanker_access", "toilets", "relief_distribution"]
+    },
+    {
+      "shelter_id": "SH-BLR-001",
+      "name": "BBMP Community Hall, Ejipura",
+      "city": "Bengaluru",
+      "location": {"longitude": 77.6319, "latitude": 12.9326},
+      "capacity": 280,
+      "current_occupancy": 140,
+      "status": "open",
+      "facilities": ["medical_desk", "women_child_area", "drinking_water"]
+    }
+  ]
+}

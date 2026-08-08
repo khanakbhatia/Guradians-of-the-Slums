@@ -1,0 +1,4 @@
+Controllers hold request/response handling only — parse req, call a service, shape the response
+via utils/ApiResponse, delegate errors via asyncHandler/next(). No business logic here.
+
+Convention: <resource>.controller.js  (e.g. user.controller.js, task.controller.js)

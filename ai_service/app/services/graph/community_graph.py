@@ -1,0 +1,1 @@
+"""NetworkX community graph boundary."""
