@@ -1,0 +1,65 @@
+{
+  "scenario": "synthetic_weather_and_rainfall",
+  "observations": [
+    {
+      "weather_observation_id": "WX-MUM-20260807-01",
+      "city": "Mumbai",
+      "settlement": "Dharavi Transit Camp",
+      "observed_at_utc": "2026-08-07T10:00:00Z",
+      "temperature_c": 27.4,
+      "humidity_percent": 91,
+      "wind_speed_mps": 6.2,
+      "pressure_hpa": 997,
+      "rainfall_mm_24h": 146.5,
+      "rainfall_mm_72h": 284.0,
+      "rainfall_intensity_mm_per_hr": 38.0,
+      "source_name": "demo_weather_api",
+      "quality_status": "synthetic_demo"
+    },
+    {
+      "weather_observation_id": "WX-DEL-20260807-01",
+      "city": "Delhi",
+      "settlement": "Yamuna Pushta Cluster",
+      "observed_at_utc": "2026-08-07T10:00:00Z",
+      "temperature_c": 30.8,
+      "humidity_percent": 82,
+      "wind_speed_mps": 3.7,
+      "pressure_hpa": 1001,
+      "rainfall_mm_24h": 72.0,
+      "rainfall_mm_72h": 196.0,
+      "rainfall_intensity_mm_per_hr": 18.5,
+      "source_name": "demo_weather_api",
+      "quality_status": "synthetic_demo"
+    },
+    {
+      "weather_observation_id": "WX-KOL-20260807-01",
+      "city": "Kolkata",
+      "settlement": "Topsia Canal Basti",
+      "observed_at_utc": "2026-08-07T10:00:00Z",
+      "temperature_c": 28.9,
+      "humidity_percent": 94,
+      "wind_speed_mps": 5.1,
+      "pressure_hpa": 998,
+      "rainfall_mm_24h": 118.2,
+      "rainfall_mm_72h": 233.7,
+      "rainfall_intensity_mm_per_hr": 29.4,
+      "source_name": "demo_weather_api",
+      "quality_status": "synthetic_demo"
+    },
+    {
+      "weather_observation_id": "WX-BLR-20260807-01",
+      "city": "Bengaluru",
+      "settlement": "Rajakaluve Edge Settlement",
+      "observed_at_utc": "2026-08-07T10:00:00Z",
+      "temperature_c": 24.1,
+      "humidity_percent": 88,
+      "wind_speed_mps": 4.8,
+      "pressure_hpa": 1005,
+      "rainfall_mm_24h": 64.3,
+      "rainfall_mm_72h": 141.6,
+      "rainfall_intensity_mm_per_hr": 16.2,
+      "source_name": "demo_weather_api",
+      "quality_status": "synthetic_demo"
+    }
+  ]
+}

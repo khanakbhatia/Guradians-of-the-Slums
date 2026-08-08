@@ -1,0 +1,41 @@
+{
+  "scenario": "synthetic_authority_and_coordination_contacts",
+  "authorities": [
+    {
+      "authority_id": "AUTH-MUM-WARD-GN",
+      "city": "Mumbai",
+      "agency": "Municipal Ward Disaster Control Room",
+      "jurisdiction": "G/North Ward",
+      "role": "ward_incident_coordination",
+      "contact_channel": "control_room",
+      "handoff_notes": "Coordinate pump deployment, temporary shelter status, and public announcements."
+    },
+    {
+      "authority_id": "AUTH-DEL-DM-EAST",
+      "city": "Delhi",
+      "agency": "District Disaster Management Cell",
+      "jurisdiction": "East Delhi riverbank settlements",
+      "role": "evacuation_authority",
+      "contact_channel": "district_control_room",
+      "handoff_notes": "Confirm river level alerts, police support for evacuation, and transport staging."
+    },
+    {
+      "authority_id": "AUTH-KOL-BOROUGH-VII",
+      "city": "Kolkata",
+      "agency": "Borough Emergency Response Desk",
+      "jurisdiction": "Topsia canal-side wards",
+      "role": "drainage_and_relief_coordination",
+      "contact_channel": "borough_office",
+      "handoff_notes": "Coordinate drain clearance crew, bleaching powder distribution, and water tankers."
+    },
+    {
+      "authority_id": "NGO-MUM-SETU",
+      "city": "Mumbai",
+      "agency": "Setu Community Relief Network",
+      "jurisdiction": "Dharavi and Sion informal settlements",
+      "role": "ngo_field_support",
+      "contact_channel": "field_coordinator",
+      "handoff_notes": "Can mobilize local volunteers, dry ration kits, first-aid support, and language translation."
+    }
+  ]
+}

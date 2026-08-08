@@ -1,0 +1,78 @@
+{
+  "roads": [
+    {
+      "road_id": "mum-dha-r1",
+      "coordinates": [
+        {"longitude": 72.8571, "latitude": 19.0451},
+        {"longitude": 72.8583, "latitude": 19.0447},
+        {"longitude": 72.8598, "latitude": 19.0442}
+      ],
+      "status": "open",
+      "width_m": 3.5,
+      "flood_depth_m": 0.08,
+      "debris_score": 0.15,
+      "capacity_score": 0.68
+    },
+    {
+      "road_id": "mum-dha-r3",
+      "coordinates": [
+        {"longitude": 72.8583, "latitude": 19.0447},
+        {"longitude": 72.8585, "latitude": 19.0437}
+      ],
+      "status": "blocked",
+      "width_m": 2.0,
+      "flood_depth_m": 0.38,
+      "debris_score": 0.76,
+      "capacity_score": 0.25
+    },
+    {
+      "road_id": "mum-dha-r5",
+      "coordinates": [
+        {"longitude": 72.8598, "latitude": 19.0442},
+        {"longitude": 72.8612, "latitude": 19.0450},
+        {"longitude": 72.8624, "latitude": 19.0463}
+      ],
+      "status": "open",
+      "width_m": 4.0,
+      "flood_depth_m": 0.05,
+      "debris_score": 0.1,
+      "capacity_score": 0.82
+    }
+  ],
+  "buildings": [
+    {
+      "building_id": "mum-dha-b001",
+      "centroid": {"longitude": 72.8580, "latitude": 19.0449},
+      "role": "residential",
+      "occupancy_estimate": 18
+    },
+    {
+      "building_id": "mum-dha-b002",
+      "centroid": {"longitude": 72.8590, "latitude": 19.0443},
+      "role": "residential",
+      "occupancy_estimate": 22
+    },
+    {
+      "building_id": "mum-dha-school",
+      "centroid": {"longitude": 72.8624, "latitude": 19.0463},
+      "role": "shelter",
+      "occupancy_estimate": 0
+    }
+  ],
+  "drainage": [
+    {
+      "drainage_id": "mum-dha-drain-01",
+      "coordinates": [
+        {"longitude": 72.8584, "latitude": 19.0448},
+        {"longitude": 72.8587, "latitude": 19.0437}
+      ],
+      "blocked": true,
+      "overflow_risk": 0.87
+    }
+  ],
+  "safe_path": {
+    "origin": {"longitude": 72.8571, "latitude": 19.0451},
+    "destination": {"longitude": 72.8624, "latitude": 19.0463},
+    "avoid_blocked_roads": true
+  }
+}

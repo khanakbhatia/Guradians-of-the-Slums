@@ -1,0 +1,1 @@
+"""Computer vision service boundary."""

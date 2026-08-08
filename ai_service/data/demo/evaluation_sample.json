@@ -1,0 +1,56 @@
+{
+  "run_id": "demo-eval-20260807",
+  "detection_cases": [
+    {
+      "case_id": "det-mum-001",
+      "predicted_boxes": [
+        {"label": "building", "x_min": 120, "y_min": 88, "x_max": 172, "y_max": 141, "confidence": 0.82},
+        {"label": "drainage", "x_min": 414, "y_min": 304, "x_max": 760, "y_max": 331, "confidence": 0.74}
+      ],
+      "ground_truth_boxes": [
+        {"label": "building", "x_min": 118, "y_min": 86, "x_max": 174, "y_max": 142, "confidence": 1.0},
+        {"label": "drainage", "x_min": 410, "y_min": 302, "x_max": 762, "y_max": 333, "confidence": 1.0}
+      ],
+      "iou_threshold": 0.5
+    }
+  ],
+  "risk_cases": [
+    {
+      "case_id": "risk-mum-001",
+      "predicted_score": 0.82,
+      "actual_score": 0.78,
+      "predicted_level": "critical",
+      "actual_level": "critical",
+      "confidence": 0.86
+    }
+  ],
+  "retrieval_cases": [
+    {
+      "case_id": "rag-sop-001",
+      "retrieved_document_ids": ["gov-flood-sop-monsoon", "ngo-field-manual-waterlogging", "municipal-shelter-list"],
+      "relevant_document_ids": ["gov-flood-sop-monsoon", "municipal-shelter-list"],
+      "top_k": 3
+    }
+  ],
+  "granite_cases": [
+    {
+      "case_id": "granite-alert-001",
+      "generated_text": "Move calmly to the municipal school shelter if the route is safe [1]. Avoid entering floodwater [2].",
+      "citation_ids": ["[1]", "[2]"],
+      "required_citation_ids": ["[1]", "[2]"],
+      "grounded": true,
+      "confidence": 0.84
+    }
+  ],
+  "latency_samples": [
+    {"operation": "detect", "latency_ms": 1840},
+    {"operation": "risk-score", "latency_ms": 120},
+    {"operation": "rag-retrieve", "latency_ms": 260},
+    {"operation": "granite-generate", "latency_ms": 4200}
+  ],
+  "confidence_cases": [
+    {"case_id": "conf-001", "confidence": 0.86, "correct": true},
+    {"case_id": "conf-002", "confidence": 0.62, "correct": true},
+    {"case_id": "conf-003", "confidence": 0.58, "correct": false}
+  ]
+}
