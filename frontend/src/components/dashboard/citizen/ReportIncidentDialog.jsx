@@ -8,23 +8,63 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogTrigger, D
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
-const CATEGORIES = ["Fire hazard", "Water contamination", "Structural risk", "Electrical hazard", "Sanitation", "Other"];
+// Labels shown to the user, mapped to the backend's hazardType enum
+// (flood, fire, structural, landslide, blocked_drainage, other) — the UI
+// copy doesn't need to match the API's vocabulary 1:1.
+const CATEGORIES = [
+  { label: "Fire hazard", value: "fire" },
+  { label: "Flooding", value: "flood" },
+  { label: "Structural risk", value: "structural" },
+  { label: "Landslide", value: "landslide" },
+  { label: "Blocked drainage", value: "blocked_drainage" },
+  { label: "Other", value: "other" },
+];
 
 function ReportIncidentDialog({ trigger }) {
   const [open, setOpen] = useState(false);
-  const [category, setCategory] = useState(CATEGORIES[0]);
+  const [category, setCategory] = useState(CATEGORIES[0].value);
   const [description, setDescription] = useState("");
+  const [location, setLocation] = useState(null);
+  const [locating, setLocating] = useState(false);
   const reportIncident = useReportIncident();
 
   function resetForm() {
-    setCategory(CATEGORIES[0]);
+    setCategory(CATEGORIES[0].value);
     setDescription("");
+    setLocation(null);
+  }
+
+  function handleUseCurrentLocation() {
+    if (!navigator.geolocation) {
+      toast({ variant: "destructive", title: "Location unavailable", description: "This browser doesn't support geolocation." });
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocation({
+          type: "Point",
+          coordinates: [pos.coords.longitude, pos.coords.latitude],
+        });
+        setLocating(false);
+      },
+      (err) => {
+        toast({ variant: "destructive", title: "Couldn't get location", description: err.message });
+        setLocating(false);
+      }
+    );
   }
 
   function handleSubmit(e) {
     e.preventDefault();
+    // location is required by the API — bail out with a clear message
+    // instead of sending a request guaranteed to fail validation.
+    if (!location) {
+      toast({ variant: "destructive", title: "Location needed", description: "Tap \u201cUse current location\u201d first." });
+      return;
+    }
     reportIncident.mutate(
-      { category, description },
+      { hazardType: category, description, location },
       {
         onSuccess: () => {
           setOpen(false);
@@ -71,17 +111,17 @@ function ReportIncidentDialog({ trigger }) {
               <div className="grid grid-cols-2 gap-2">
                 {CATEGORIES.map((c) => (
                   <button
-                    key={c}
+                    key={c.value}
                     type="button"
-                    onClick={() => setCategory(c)}
+                    onClick={() => setCategory(c.value)}
                     className={cn(
                       "rounded-md border px-2.5 py-2 text-left text-xs font-medium transition-colors",
-                      category === c
+                      category === c.value
                         ? "border-primary/50 bg-primary/10 text-primary"
                         : "border-border-strong text-muted-foreground hover:bg-accent"
                     )}
                   >
-                    {c}
+                    {c.label}
                   </button>
                 ))}
               </div>
@@ -101,10 +141,10 @@ function ReportIncidentDialog({ trigger }) {
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <Button type="button" variant="outline" size="sm" className="justify-start">
-                <MapPin className="size-4" /> Use current location
+              <Button type="button" variant="outline" size="sm" className="justify-start" onClick={handleUseCurrentLocation} loading={locating}>
+                <MapPin className="size-4" /> {location ? "Location set" : "Use current location"}
               </Button>
-              <Button type="button" variant="outline" size="sm" className="justify-start">
+              <Button type="button" variant="outline" size="sm" className="justify-start" disabled>
                 <Camera className="size-4" /> Attach photo
               </Button>
             </div>

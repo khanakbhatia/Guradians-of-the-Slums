@@ -1,4 +1,4 @@
-import { useVolunteerTasks, useTaskAction, useNearbyRequests, useClaimRequest } from "@/hooks/queries/useVolunteerQueries";
+import { useVolunteerTasks, useTaskAction, useNearbyRequests } from "@/hooks/queries/useVolunteerQueries";
 import DashboardHeader from "@/components/common/DashboardHeader";
 import VolunteerScoreCard from "@/components/dashboard/volunteer/VolunteerScoreCard";
 import Availability from "@/components/dashboard/volunteer/Availability";
@@ -14,16 +14,14 @@ import { toast } from "@/hooks/use-toast";
 
 /**
  * Volunteer Dashboard — composed entirely from src/components/dashboard/volunteer/*.
- * Tasks and nearby requests come from the API (useVolunteerTasks,
- * useNearbyRequests); accept/decline/complete/claim are mutations
- * (useTaskAction, useClaimRequest). Presentational subcomponents are
- * unchanged — they just receive real data instead of dummy fixtures.
+ * Tasks/nearby-requests/claim have no backend endpoint yet (see
+ * useVolunteerQueries.js) — those sections will show their ErrorState
+ * with the reason, rather than crash or silently render nothing.
  */
 function VolunteerDashboard() {
   const tasksQuery = useVolunteerTasks();
   const requestsQuery = useNearbyRequests();
   const taskAction = useTaskAction();
-  const claimRequest = useClaimRequest();
 
   const tasks = tasksQuery.data ?? [];
   const assigned = tasks.filter((t) => t.status === "assigned");
@@ -47,19 +45,17 @@ function VolunteerDashboard() {
 
   function handleDecline(id) {
     const task = tasks.find((t) => t.id === id);
-    runAction(id, "decline", { variant: "destructive", title: "Task declined", description: task?.title });
+    runAction(id, "reject", { variant: "destructive", title: "Task declined", description: task?.title });
   }
 
   function handleComplete(id) {
     runAction(id, "complete", { variant: "success", title: "Task marked complete", description: id });
   }
 
-  function handleClaim(id) {
-    const req = (requestsQuery.data ?? []).find((r) => r.id === id);
-    claimRequest.mutate(id, {
-      onSuccess: () => toast({ variant: "success", title: "Request claimed", description: req?.title }),
-      onError: (err) => toast({ variant: "destructive", title: "Couldn't claim request", description: err?.message }),
-    });
+  // No backend "claim" endpoint exists (see useVolunteerQueries.js) — this
+  // just surfaces that clearly instead of calling a made-up path.
+  function handleClaim() {
+    toast({ variant: "destructive", title: "Not available yet", description: "Claiming requests isn't supported by the API yet." });
   }
 
   return (

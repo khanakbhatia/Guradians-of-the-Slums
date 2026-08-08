@@ -7,17 +7,21 @@ import { ListCardSkeleton } from "@/components/common/skeletons";
 import ErrorState from "@/components/common/ErrorState";
 import { cn } from "@/lib/utils";
 
-const SEVERITY_DOT = {
-  destructive: "bg-destructive",
-  warning: "bg-warning",
-  info: "bg-info",
-  success: "bg-success",
+// Notification.priority is low/normal/high/urgent (see backend model) —
+// mapped to a dot color rather than the invented destructive/warning/
+// info/success severity this card used to expect.
+const PRIORITY_DOT = {
+  urgent: "bg-destructive",
+  high: "bg-warning",
+  normal: "bg-info",
+  low: "bg-success",
 };
 
 /**
  * Compact alert list — a status row per advisory, not a stack of full
- * alert boxes. a.severity already matches destructive/warning/info
- * directly from the API.
+ * alert boxes. Backed by the shared /notifications endpoint (there's no
+ * dedicated "alerts" resource) — every notification a citizen has
+ * received shows up here.
  */
 function EmergencyAlerts() {
   const { data: alerts, isLoading, isError, error, refetch, isRefetching } = useCitizenAlerts();
@@ -42,11 +46,11 @@ function EmergencyAlerts() {
         <CardContent className="divide-y divide-border p-0">
           {alerts.map((a) => (
             <div key={a.id} className="flex items-start gap-3 p-3">
-              <span className={cn("mt-1.5 size-1.5 shrink-0 rounded-full", SEVERITY_DOT[a.severity] ?? "bg-muted-foreground")} />
+              <span className={cn("mt-1.5 size-1.5 shrink-0 rounded-full", PRIORITY_DOT[a.priority] ?? "bg-muted-foreground")} />
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium text-foreground">{a.title}</div>
-                <Muted className="mt-0.5">{a.body}</Muted>
-                <DataText className="mt-1 block text-2xs text-muted-foreground">{a.time}</DataText>
+                <Muted className="mt-0.5">{a.message}</Muted>
+                <DataText className="mt-1 block text-2xs text-muted-foreground">{a.createdAt}</DataText>
               </div>
             </div>
           ))}
