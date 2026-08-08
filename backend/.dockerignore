@@ -1,0 +1,16 @@
+node_modules
+npm-debug.log*
+.env
+.env.*
+!.env.example
+logs/*.log
+logs/.*.json
+.git
+.gitignore
+.dockerignore
+Dockerfile
+*.md
+uploads/*
+!uploads/.gitkeep
+coverage
+.DS_Store

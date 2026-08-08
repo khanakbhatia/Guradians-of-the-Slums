@@ -1,0 +1,267 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /*
+    Design system: civic emergency-operations console.
+    Dark-first, information-dense, neutral graphite surfaces with a
+    single restrained accent. Color is reserved for status/severity —
+    not decoration. Flat panels, hairline borders, minimal radius.
+  */
+  :root {
+    /* Neutral graphite base — no blue/navy tint. Reads as instrument
+       panel, not "AI app". */
+    --canvas: 220 8% 7%;
+    --background: 220 8% 9%;
+    --foreground: 210 6% 90%;
+
+    --card: 220 8% 11%;
+    --card-foreground: 210 6% 90%;
+
+    --popover: 220 8% 12%;
+    --popover-foreground: 210 6% 90%;
+
+    /* Institutional steel blue — desaturated, not a SaaS/neon blue.
+       Used sparingly: primary actions, links, active state. */
+    --primary: 208 38% 50%;
+    --primary-foreground: 0 0% 100%;
+    --primary-muted: 208 38% 50% / 0.12;
+
+    --secondary: 220 7% 15%;
+    --secondary-foreground: 210 6% 85%;
+
+    --muted: 220 6% 14%;
+    --muted-foreground: 220 5% 58%;
+
+    --accent: 220 7% 17%;
+    --accent-foreground: 210 6% 92%;
+
+    --destructive: 355 55% 48%;
+    --destructive-foreground: 0 0% 100%;
+    --destructive-muted: 355 55% 48%;
+
+    --success: 148 32% 38%;
+    --success-foreground: 0 0% 100%;
+    --success-muted: 148 32% 38%;
+
+    --warning: 36 65% 47%;
+    --warning-foreground: 0 0% 100%;
+    --warning-muted: 36 65% 47%;
+
+    --info: 185 35% 42%;
+    --info-foreground: 0 0% 100%;
+    --info-muted: 185 35% 42%;
+
+    --border: 220 6% 19%;
+    --border-strong: 220 6% 27%;
+    --input: 220 6% 19%;
+    --ring: 208 38% 50%;
+
+    --chart-1: 208 38% 55%;
+    --chart-2: 355 45% 52%;
+    --chart-3: 36 55% 50%;
+    --chart-4: 185 30% 50%;
+    --chart-5: 148 28% 45%;
+
+    /* Sharper corners — instrument panels, not app bubbles. */
+    --radius: 0.25rem;
+  }
+
+  /* Light theme kept for completeness / toggle support; product default is dark. */
+  .light {
+    --canvas: 220 14% 97%;
+    --background: 0 0% 100%;
+    --foreground: 220 14% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 14% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 14% 12%;
+
+    --primary: 208 45% 38%;
+    --primary-foreground: 0 0% 100%;
+    --primary-muted: 208 45% 38% / 0.1;
+
+    --secondary: 220 14% 95%;
+    --secondary-foreground: 220 14% 15%;
+
+    --muted: 220 14% 95%;
+    --muted-foreground: 220 8% 42%;
+
+    --accent: 220 14% 93%;
+    --accent-foreground: 220 14% 15%;
+
+    --destructive: 355 55% 42%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 148 35% 30%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 36 65% 38%;
+    --warning-foreground: 0 0% 100%;
+
+    --info: 185 40% 32%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 220 13% 88%;
+    --border-strong: 220 12% 78%;
+    --input: 220 13% 88%;
+    --ring: 208 45% 38%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.3);
+  }
+
+  /* Tabular figures anywhere numeric data is rendered */
+  .tabular-nums,
+  table,
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Thin, unobtrusive scrollbars in the Linear/Palantir style */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border-strong)) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border-strong));
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground));
+  }
+
+  /* Visible keyboard focus everywhere, no default outline mismatch */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer utilities {
+  .skeleton-shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .skeleton-shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsl(var(--foreground) / 0.06),
+      transparent
+    );
+    animation: shimmer 1.6s infinite;
+  }
+}
+
+/* Leaflet base overrides so maps behave inside dark panels */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  font-family: inherit;
+  background: hsl(var(--background));
+}
+
+.leaflet-control-zoom {
+  border: 1px solid hsl(var(--border-strong)) !important;
+  border-radius: 0.375rem !important;
+  overflow: hidden;
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.5) !important;
+}
+.leaflet-control-zoom a {
+  background-color: hsl(var(--popover)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+.leaflet-control-zoom a:hover {
+  background-color: hsl(var(--accent)) !important;
+}
+.leaflet-control-attribution {
+  background: hsl(var(--popover) / 0.85) !important;
+  color: hsl(var(--muted-foreground)) !important;
+  backdrop-filter: blur(4px);
+}
+.leaflet-control-attribution a {
+  color: hsl(var(--primary)) !important;
+}
+.leaflet-popup-content-wrapper,
+.leaflet-tooltip {
+  background: hsl(var(--popover)) !important;
+  color: hsl(var(--popover-foreground)) !important;
+  border: 1px solid hsl(var(--border-strong));
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.5);
+}
+.leaflet-popup-tip {
+  background: hsl(var(--popover)) !important;
+}
+.leaflet-tooltip-top:before,
+.leaflet-tooltip-bottom:before {
+  border-top-color: hsl(var(--border-strong)) !important;
+}
+
+/* Heatmap layer: fade/scale in on mount, then a very slow, subtle
+   opacity "breathe" — reads as live sensing without being distracting. */
+.leaflet-heatmap-layer {
+  animation: heatmap-enter 0.6s ease-out, heatmap-breathe 7s ease-in-out 0.6s infinite;
+  transform-origin: center;
+}
+@keyframes heatmap-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes heatmap-breathe {
+  0%, 100% {
+    opacity: 0.92;
+  }
+  50% {
+    opacity: 1;
+  }
+}

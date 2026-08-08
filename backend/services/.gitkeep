@@ -1,0 +1,5 @@
+Business logic and third-party integrations (Cloudinary uploads, matching algorithms, etc.)
+live here, decoupled from Express req/res. Controllers call services; services never touch
+req/res directly.
+
+Convention: <resource>.service.js  (e.g. auth.service.js, upload.service.js)
