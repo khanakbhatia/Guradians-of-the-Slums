@@ -1,0 +1,88 @@
+{
+  "incident_id": "demo-monsoon-2026-08-07",
+  "zones": [
+    {
+      "zone_id": "mum-dha-09",
+      "name": "Dharavi Transit Camp low-lying lanes",
+      "risk_score": 0.88,
+      "priority": "critical",
+      "needs": [
+        {"resource_type": "medical_team", "quantity": 2},
+        {"resource_type": "water", "quantity": 25},
+        {"resource_type": "rescue_team", "quantity": 2},
+        {"resource_type": "shelter", "quantity": 120}
+      ]
+    },
+    {
+      "zone_id": "del-yp-03",
+      "name": "Yamuna Pushta river-edge huts",
+      "risk_score": 0.93,
+      "priority": "critical",
+      "needs": [
+        {"resource_type": "rescue_team", "quantity": 3},
+        {"resource_type": "shelter", "quantity": 180},
+        {"resource_type": "food", "quantity": 140}
+      ]
+    },
+    {
+      "zone_id": "kol-top-04",
+      "name": "Topsia canal-side lanes",
+      "risk_score": 0.72,
+      "priority": "high",
+      "needs": [
+        {"resource_type": "water", "quantity": 18},
+        {"resource_type": "food", "quantity": 90}
+      ]
+    }
+  ],
+  "resources": [
+    {
+      "resource_id": "MED-MUM-WARD-GN-1",
+      "resource_type": "medical_team",
+      "label": "Ward mobile medical team",
+      "available_quantity": 2,
+      "distance_km": 1.8,
+      "reliability_score": 0.92
+    },
+    {
+      "resource_id": "RESCUE-MUM-FIRE-1",
+      "resource_type": "rescue_team",
+      "label": "Fire brigade rescue unit",
+      "available_quantity": 2,
+      "distance_km": 3.4,
+      "reliability_score": 0.95
+    },
+    {
+      "resource_id": "WATER-KOL-TANKER-1",
+      "resource_type": "water",
+      "label": "Water tanker cluster",
+      "available_quantity": 35,
+      "distance_km": 2.7,
+      "reliability_score": 0.84
+    },
+    {
+      "resource_id": "FOOD-NGO-DRY-RATION-1",
+      "resource_type": "food",
+      "label": "Dry ration kits",
+      "available_quantity": 220,
+      "distance_km": 4.1,
+      "reliability_score": 0.88
+    },
+    {
+      "resource_id": "SHELTER-MUM-SCHOOL-1",
+      "resource_type": "shelter",
+      "label": "Municipal school shelter capacity",
+      "available_quantity": 330,
+      "distance_km": 1.6,
+      "reliability_score": 0.9
+    },
+    {
+      "resource_id": "RESCUE-DEL-DDMA-1",
+      "resource_type": "rescue_team",
+      "label": "District rescue boats and evacuation team",
+      "available_quantity": 2,
+      "distance_km": 5.2,
+      "reliability_score": 0.89
+    }
+  ]
+}

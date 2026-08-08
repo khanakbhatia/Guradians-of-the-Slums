@@ -1,0 +1,1 @@
+"""Graph AI service boundary."""

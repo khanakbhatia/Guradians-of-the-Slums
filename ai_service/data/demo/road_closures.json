@@ -1,0 +1,49 @@
+{
+  "scenario": "synthetic_road_closures",
+  "closures": [
+    {
+      "road_id": "mum-dha-r3",
+      "city": "Mumbai",
+      "settlement": "Dharavi Transit Camp",
+      "status": "blocked",
+      "reason": "standing water above ankle level and debris near public toilet block",
+      "severity": 0.82,
+      "flood_depth_m": 0.38,
+      "debris_score": 0.76,
+      "reported_at_utc": "2026-08-07T10:32:00Z"
+    },
+    {
+      "road_id": "del-yp-r1",
+      "city": "Delhi",
+      "settlement": "Yamuna Pushta Cluster",
+      "status": "blocked",
+      "reason": "river edge access path unsafe due to rising water",
+      "severity": 0.93,
+      "flood_depth_m": 0.7,
+      "debris_score": 0.35,
+      "reported_at_utc": "2026-08-07T09:55:00Z"
+    },
+    {
+      "road_id": "kol-top-r4",
+      "city": "Kolkata",
+      "settlement": "Topsia Canal Basti",
+      "status": "degraded",
+      "reason": "drain overflow and slippery approach to canal-side lane",
+      "severity": 0.64,
+      "flood_depth_m": 0.22,
+      "debris_score": 0.45,
+      "reported_at_utc": "2026-08-07T08:38:00Z"
+    },
+    {
+      "road_id": "blr-rjk-r2",
+      "city": "Bengaluru",
+      "settlement": "Rajakaluve Edge Settlement",
+      "status": "degraded",
+      "reason": "narrow lane waterlogging beside open drain",
+      "severity": 0.52,
+      "flood_depth_m": 0.18,
+      "debris_score": 0.39,
+      "reported_at_utc": "2026-08-07T07:52:00Z"
+    }
+  ]
+}
