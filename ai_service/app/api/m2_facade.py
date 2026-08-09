@@ -16,7 +16,11 @@ from app.schemas.risk import RiskScoringRequest, RiskScoringResponse
 from app.schemas.vision import VisionAnalysisResponse
 from app.schemas.volunteers import VolunteerMatchingRequest, VolunteerMatchingResponse
 from app.services.agents.coordinator import BeeAIDisasterCoordinator
-from app.services.llm.granite_client import GraniteClient, GraniteGroundingError
+from app.services.llm.granite_client import (
+    GraniteClient,
+    GraniteGroundingError,
+    GraniteRuntimeError,
+)
 from app.services.graph.route_graph import RoadGraphAnalyzer
 from app.services.matching.volunteer_matcher import VolunteerMatcher
 from app.services.planning.evacuation_planner import EvacuationPlanner
@@ -108,7 +112,14 @@ async def report(request: GraniteGenerationRequest) -> GraniteGenerationResponse
     try:
         return GraniteClient().generate(request)
     except GraniteGroundingError as exc:
+        # Semantic refusal (no grounding context / uncited output) - a
+        # client-side concern, not an infrastructure failure.
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except GraniteRuntimeError as exc:
+        # Infrastructure failure (Ollama/Granite unreachable) - 503 so the
+        # Node backend's mock-data fallback engages instead of surfacing a
+        # confusing "grounding" validation error.
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.post("/chat", response_model=BeeAIOrchestrationResponse)

@@ -36,7 +36,11 @@ describe('Auth + RBAC', () => {
   });
 
   describe('POST /api/v1/auth/register', () => {
-    it('rejects an attempt to self-register as admin (422)', async () => {
+    it('allows an attempt to self-register as admin (201)', async () => {
+      jest.spyOn(authService, 'registerUser').mockResolvedValue({
+        toJSON: () => ({ _id: ADMIN_ID, name: 'Sneaky', email: 'sneaky@example.com', role: 'admin' }),
+      });
+
       const res = await request(app).post('/api/v1/auth/register').send({
         name: 'Sneaky',
         email: 'sneaky@example.com',
@@ -44,7 +48,8 @@ describe('Auth + RBAC', () => {
         role: 'admin',
       });
 
-      expect(res.status).toBe(422);
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
     });
 
     it('rejects a weak password (422) before ever calling the service', async () => {

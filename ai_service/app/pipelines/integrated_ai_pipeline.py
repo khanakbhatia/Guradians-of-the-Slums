@@ -76,7 +76,14 @@ class IntegratedAIPipeline:
         granite_output = None
         if request.granite_input:
             try:
-                granite_output = granite_generation_cache.get_or_set(
+                # Offloaded to a thread for the same reason the graph/risk/rag
+                # stages below are: GraniteClient().generate() is blocking
+                # synchronous HTTP against Ollama and would otherwise freeze
+                # the event loop for the whole generation (up to the 60s
+                # timeout). This was the only stage still running inline -
+                # and the slowest one.
+                granite_output = await asyncio.to_thread(
+                    granite_generation_cache.get_or_set,
                     stable_cache_key("granite-generation", request.granite_input),
                     lambda: GraniteClient().generate(request.granite_input),
                 )

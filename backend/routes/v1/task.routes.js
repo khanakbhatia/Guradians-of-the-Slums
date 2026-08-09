@@ -1,9 +1,9 @@
 /**
  * routes/v1/task.routes.js
- * PARTIAL — mounted at /api/v1/tasks. Only the volunteer action endpoints
- * (accept/reject/complete) plus a minimal GET by id, per this turn's scope.
- * Full Task CRUD (create/update/delete/list, authority-side task posting)
- * is a separate future turn, same pattern as RiskZone/Incident.
+ * Mounted at /api/v1/tasks. Volunteer action endpoints (accept/reject/
+ * complete), a minimal GET by id, list (with open/nearby browsing for
+ * volunteers), and authority/admin task creation. Update/delete Task is
+ * still a separate future turn, same pattern as RiskZone/Incident.
  */
 
 const express = require('express');
@@ -12,10 +12,96 @@ const { body, param } = require('express-validator');
 const taskController = require('../../controllers/task.controller');
 const validateRequest = require('../../middlewares/validateRequest');
 const { protect, authorize } = require('../../middlewares/auth');
+const { TASK_TYPES, PRIORITIES } = require('../../models/Task.model');
+const { SKILLS } = require('../../models/Volunteer.model');
 
 const router = express.Router();
 
 router.use(protect);
+
+/**
+ * @swagger
+ * /tasks:
+ *   get:
+ *     tags: [Tasks]
+ *     summary: List tasks
+ *     description: "Authorities/admins see all tasks (optionally filtered by status/assignedVolunteer). Volunteers normally see only tasks assigned to them; passing ?open=true (or ?status=open) instead lists unassigned open tasks for them to browse/accept, optionally sorted nearest-first with ?lng=&lat=&radiusKm= (defaults 15km) — the 'nearby requests' widget's backing query."
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema: { type: string, enum: [open, assigned, in_progress, completed, cancelled] }
+ *       - in: query
+ *         name: open
+ *         schema: { type: boolean }
+ *         description: "Volunteer-only shortcut for status=open without the assignedVolunteer restriction."
+ *       - in: query
+ *         name: lng
+ *         schema: { type: number }
+ *       - in: query
+ *         name: lat
+ *         schema: { type: number }
+ *       - in: query
+ *         name: radiusKm
+ *         schema: { type: number, default: 15 }
+ *     responses:
+ *       200:
+ *         description: Tasks fetched
+ *       401: { $ref: '#/components/responses/UnauthorizedError' }
+ */
+router.get('/', taskController.listTasks);
+
+/**
+ * @swagger
+ * /tasks:
+ *   post:
+ *     tags: [Tasks]
+ *     summary: Create Task
+ *     description: "authority/admin only. Posts a new relief task against an incident; starts 'open' for volunteers to accept."
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [title, incident, taskType, location]
+ *             properties:
+ *               title: { type: string }
+ *               description: { type: string }
+ *               incident: { type: string }
+ *               riskZone: { type: string }
+ *               taskType: { type: string }
+ *               priority: { type: string }
+ *               requiredSkills: { type: array, items: { type: string } }
+ *               estimatedTimeMinutes: { type: number }
+ *               location:
+ *                 type: object
+ *                 properties:
+ *                   coordinates: { type: array, items: { type: number }, example: [72.8777, 19.0760] }
+ *     responses:
+ *       201:
+ *         description: Task created
+ *       401: { $ref: '#/components/responses/UnauthorizedError' }
+ *       403: { $ref: '#/components/responses/ForbiddenError' }
+ *       422: { $ref: '#/components/responses/ValidationError' }
+ */
+router.post(
+  '/',
+  authorize('authority', 'admin'),
+  [
+    body('title').trim().isLength({ min: 3, max: 200 }),
+    body('incident').isMongoId(),
+    body('riskZone').optional().isMongoId(),
+    body('taskType').isIn(TASK_TYPES),
+    body('priority').optional().isIn(PRIORITIES),
+    body('requiredSkills').optional().isArray(),
+    body('requiredSkills.*').optional().isIn(SKILLS),
+    body('location.coordinates').isArray({ min: 2, max: 2 }),
+    body('description').optional().isLength({ max: 1000 }),
+    body('estimatedTimeMinutes').optional().isInt({ min: 0 }),
+  ],
+  validateRequest,
+  taskController.createTask
+);
 
 const idParamValidator = param('id').isMongoId().withMessage('Invalid task id');
 

@@ -3,29 +3,40 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/axios";
 import { ENDPOINTS } from "@/api/endpoints";
 import { QK } from "@/api/queryKeys";
+import { useAuth } from "@/context/AuthContext";
 
-const LIVE_REQUEST_REFETCH_MS = 5000;
+// 15s, not 5s — see the note in useAuthorityQueries.js (global rate-limit
+// exhaustion from aggressive dashboard polling).
+const LIVE_REQUEST_REFETCH_MS = 15000;
 
 function formatTime(value) {
   if (!value) return "";
   return new Date(value).toLocaleString();
 }
 
-function requesterName(report) {
-  if (typeof report.reporter === "object" && report.reporter?.name) return report.reporter.name;
-  return "Citizen";
+/** Great-circle distance in km between two [lng, lat] points (Haversine), for display only. */
+function distanceKm([lngA, latA], [lngB, latB]) {
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const R = 6371;
+  const dLat = toRad(latB - latA);
+  const dLon = toRad(lngB - lngA);
+  const a =
+    Math.sin(dLat / 2) ** 2 + Math.cos(toRad(latA)) * Math.cos(toRad(latB)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function mapReportToNearbyRequest(report) {
+function mapTaskToNearbyRequest(task, origin) {
+  const coords = task.location?.coordinates;
+  const km = origin && coords ? distanceKm(origin, coords) : null;
   return {
-    id: report.id,
-    priority: report.severity,
-    distanceKm: "—",
-    title: report.description,
-    zone: report.riskZone?.name || report.riskZone?.blockId || "Reported location",
-    reportedBy: requesterName(report),
-    time: formatTime(report.createdAt),
-    imageCount: report.photos?.length ?? 0,
+    id: task._id,
+    priority: task.priority,
+    distanceKm: km !== null ? km.toFixed(1) : "—",
+    title: task.title,
+    zone: task.riskZone?.name || task.riskZone?.blockId || "Task location",
+    reportedBy: "Authority",
+    time: formatTime(task.createdAt),
+    imageCount: 0,
   };
 }
 
@@ -74,9 +85,42 @@ export function useVolunteerTimeline() {
   return useQuery({
     queryKey: QK.volunteerTimeline,
     queryFn: async () => {
-      throw new Error("No backend endpoint for a volunteer activity timeline yet");
+      const response = await api.get(ENDPOINTS.TASKS);
+      const tasks = response.data.tasks || [];
+      const events = [];
+      tasks.forEach((t) => {
+        const zone = t.riskZone?.name || t.riskZone?.blockId || "Assigned location";
+        if (t.createdAt) {
+          events.push({
+            id: `${t._id}-assigned`,
+            type: "assigned",
+            title: `Assigned: ${t.title} (${zone})`,
+            time: new Date(t.createdAt).toLocaleString(),
+            dateObj: new Date(t.createdAt),
+          });
+        }
+        if (t.acceptedAt) {
+          events.push({
+            id: `${t._id}-accepted`,
+            type: "accepted",
+            title: `Accepted: ${t.title}`,
+            time: new Date(t.acceptedAt).toLocaleString(),
+            dateObj: new Date(t.acceptedAt),
+          });
+        }
+        if (t.completedAt) {
+          events.push({
+            id: `${t._id}-completed`,
+            type: "completed",
+            title: `Completed: ${t.title}`,
+            time: new Date(t.completedAt).toLocaleString(),
+            dateObj: new Date(t.completedAt),
+          });
+        }
+      });
+      events.sort((a, b) => b.dateObj - a.dateObj);
+      return events.slice(0, 10);
     },
-    retry: false,
   });
 }
 
@@ -89,35 +133,74 @@ export function useVolunteerStats() {
 }
 
 export function useVolunteerLeaderboard() {
+  const { user } = useAuth();
   return useQuery({
     queryKey: QK.volunteerLeaderboard,
-    queryFn: async () => (await api.get(ENDPOINTS.VOLUNTEER_LEADERBOARD)).data.leaderboard,
+    queryFn: async () => {
+      const response = await api.get(ENDPOINTS.VOLUNTEER_LEADERBOARD);
+      const list = response.data.leaderboard || [];
+      return list.map((v) => ({
+        id: v._id,
+        name: v.user?.name || "Volunteer",
+        tasksCompleted: v.completedTasksCount,
+        score: v.trustScore,
+        isCurrentUser: v.user?._id === user?.id || v.user?._id === user?._id || v.user === user?.id,
+      }));
+    },
   });
 }
 
-/**
- * NOT WIRED UP: no "list my tasks" or "nearby requests to claim" endpoint
- * exists yet (task.routes.js only has GET /:id + accept/reject/complete —
- * see its comment: "full Task CRUD is a separate future endpoint set").
- * Left as explicit errors so the dashboard's existing ErrorState surfaces
- * the gap instead of silently hitting a 404.
- */
 export function useVolunteerTasks() {
   return useQuery({
     queryKey: QK.volunteerTasks,
     queryFn: async () => {
-      throw new Error("No backend endpoint to list a volunteer's tasks yet");
+      const response = await api.get(ENDPOINTS.TASKS);
+      const tasks = response.data.tasks || [];
+      return tasks.map((t) => {
+        let frontendStatus = t.status;
+        if (t.status === "assigned" && t.acceptedAt) {
+          frontendStatus = "accepted";
+        } else if (t.status === "in_progress") {
+          frontendStatus = "accepted";
+        }
+        return {
+          id: t._id,
+          title: t.title,
+          description: t.description,
+          priority: t.priority,
+          status: frontendStatus,
+          zone: t.riskZone?.name || t.riskZone?.blockId || "Assigned location",
+          eta: t.estimatedTimeMinutes ? `${t.estimatedTimeMinutes} mins` : "—",
+        };
+      });
     },
-    retry: false,
   });
 }
 
+/**
+ * Open, unassigned tasks a volunteer can browse and accept — backed by
+ * GET /tasks?open=true (added alongside POST /tasks so authorities can
+ * actually post tasks for this to list). Sorted nearest-first when the
+ * volunteer has a known currentLocation (see useVolunteerAvailability);
+ * otherwise falls back to newest-first.
+ */
 export function useNearbyRequests() {
+  const { data: availability } = useVolunteerAvailability();
+  const coords = availability?.currentLocation?.coordinates;
+
   return useQuery({
     queryKey: QK.volunteerNearbyRequests,
-    queryFn: async () =>
-      (await api.get(ENDPOINTS.CITIZEN_REPORTS, { params: { status: "pending" } })).data
-        .reports.map(mapReportToNearbyRequest),
+    queryFn: async () => {
+      const params = { open: true };
+      if (coords?.length === 2) {
+        params.lng = coords[0];
+        params.lat = coords[1];
+        params.radiusKm = 15;
+      }
+      const response = await api.get(ENDPOINTS.TASKS, { params });
+      const tasks = response.data.tasks || [];
+      return tasks.map((t) => mapTaskToNearbyRequest(t, coords?.length === 2 ? coords : null));
+    },
     refetchInterval: LIVE_REQUEST_REFETCH_MS,
   });
 }

@@ -24,6 +24,7 @@ const AuthorityDashboard = lazy(() => import("@/pages/dashboard/AuthorityDashboa
 const VolunteerDashboard = lazy(() => import("@/pages/dashboard/VolunteerDashboard"));
 const CitizenDashboard = lazy(() => import("@/pages/dashboard/CitizenDashboard"));
 const AdminDashboard = lazy(() => import("@/pages/dashboard/AdminDashboard"));
+const VolunteerApprovals = lazy(() => import("@/pages/dashboard/VolunteerApprovals"));
 const MapView = lazy(() => import("@/pages/MapView"));
 const IncidentDetails = lazy(() => import("@/pages/incident/IncidentDetails"));
 
@@ -99,6 +100,14 @@ function AppRoutes() {
             element={
               <RoleGuard roles={[ROLES.ADMIN]}>
                 <Lazy><AdminDashboard /></Lazy>
+              </RoleGuard>
+            }
+          />
+          <Route
+            path={ROUTES.VOLUNTEER_APPROVALS}
+            element={
+              <RoleGuard roles={[ROLES.ADMIN]}>
+                <Lazy><VolunteerApprovals /></Lazy>
               </RoleGuard>
             }
           />

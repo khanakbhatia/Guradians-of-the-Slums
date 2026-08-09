@@ -1,8 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import api from "@/lib/axios";
 import { ENDPOINTS } from "@/api/endpoints";
 import { QK } from "@/api/queryKeys";
+import { getHealthUrl } from "@/lib/utils";
 
 /**
  * GET /admin/dashboard returns nested counts (users/incidents/
@@ -51,24 +52,85 @@ export function useSignupTrend() {
 export function useAdminActivity() {
   return useQuery({
     queryKey: QK.adminActivity,
-    queryFn: async () => (await api.get(ENDPOINTS.ADMIN_ACTIVITY_FEED)).data.feed,
+    queryFn: async () => {
+      const response = await api.get(ENDPOINTS.ADMIN_ACTIVITY_FEED);
+      const feed = response.data.feed || [];
+      return feed.map((a) => {
+        let actorName = "System";
+        if (a.performedBySystem && a.agentName) {
+          actorName = `${a.agentName} (System)`;
+        } else if (a.actor && typeof a.actor === "object") {
+          actorName = `${a.actor.name} (${a.actor.role})`;
+        }
+        return {
+          id: a._id,
+          action: a.action.replace(/_/g, " "),
+          actor: actorName,
+          time: new Date(a.createdAt).toLocaleString(),
+        };
+      });
+    },
   });
 }
 
-/**
- * NO CONFIRMED ENDPOINT: a health/system-status check wasn't in the
- * confirmed backend route list (auth, users, incidents, notifications,
- * risk-zones, citizen-reports, media, admin), and this axios instance's
- * baseURL is fixed to the versioned API root — a "/health" route, if one
- * exists, would live outside it. Resolves to an empty list rather than
- * guessing at a path; the widget shows its normal empty state instead of
- * a network error.
- */
 export function useSystemStatus() {
   return useQuery({
     queryKey: QK.adminSystemStatus,
-    queryFn: () => Promise.resolve([]),
+    queryFn: async () => {
+      try {
+        const { data } = await api.get(getHealthUrl());
+        return [
+          { id: "database", label: "MongoDB Database", status: data.dependencies.database === "connected" ? "operational" : "down" },
+          { id: "api", label: "Application API", status: "operational" },
+        ];
+      } catch (err) {
+        return [
+          { id: "database", label: "MongoDB Database", status: "down" },
+          { id: "api", label: "Application API", status: "down" },
+        ];
+      }
+    },
     staleTime: 1000 * 30,
     refetchInterval: 1000 * 30,
+  });
+}
+
+export function usePendingVolunteers(page = 1) {
+  return useQuery({
+    queryKey: ["admin", "volunteers", "pending", page],
+    queryFn: async () => {
+      const response = await api.get(ENDPOINTS.ADMIN_PENDING_VOLUNTEERS, { params: { page, limit: 10 } });
+      return response.data;
+    },
+  });
+}
+
+export function useApproveVolunteer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => {
+      const response = await api.post(ENDPOINTS.adminApproveVolunteer(id));
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QK.adminOverview });
+      queryClient.invalidateQueries({ queryKey: ["admin", "volunteers", "pending"] });
+      queryClient.invalidateQueries({ queryKey: QK.adminActivity });
+    },
+  });
+}
+
+export function useRejectVolunteer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => {
+      const response = await api.post(ENDPOINTS.adminRejectVolunteer(id));
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QK.adminOverview });
+      queryClient.invalidateQueries({ queryKey: ["admin", "volunteers", "pending"] });
+      queryClient.invalidateQueries({ queryKey: QK.adminActivity });
+    },
   });
 }

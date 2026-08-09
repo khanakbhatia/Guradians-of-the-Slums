@@ -26,3 +26,27 @@ export function initials(fullName = "") {
     .join("")
     .toUpperCase();
 }
+
+/** Resolves an image URL, prepending the backend host for local relative uploads if necessary. */
+export function getImageUrl(url) {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+  const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
+  const backendBase = apiBase.replace(/\/api\/v1\/?$/, "");
+  return `${backendBase}${url}`;
+}
+
+/**
+ * Absolute URL for the backend's unversioned /api/health endpoint, built
+ * the same defensive way as getImageUrl (strip /api/v1 off the configured
+ * base) rather than relying on axios resolving a relative "../health"
+ * against baseURL, which breaks if baseURL's shape ever changes.
+ */
+export function getHealthUrl() {
+  const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
+  const backendBase = apiBase.replace(/\/api\/v1\/?$/, "");
+  return `${backendBase}/api/health`;
+}
+

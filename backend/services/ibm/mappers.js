@@ -235,6 +235,52 @@ const mapGraniteGenerationResponseToLegacy = (response, { language } = {}) => ({
   generatedAt: new Date(),
 });
 
+// ---- evacuation planning ----
+// ai_service's /evacuate needs a road_graph observation and a shelters
+// list as INPUT (same "this project hasn't wired up upstream pipelines
+// yet" situation as risk scoring above) — callers pass shelters explicitly
+// (the frontend already has shelter fixture data client-side, see
+// frontend/src/data/mapData.js) rather than this mapper fabricating them.
+/**
+ * @param {{ incidentId: string, origin: {lng:number, lat:number}, shelters: Array, roadGraph?: object, riskZones?: Array, blockedRoadIds?: string[], destinationShelterId?: string, peopleCount?: number }} input
+ */
+const buildEvacuationPlanningRequest = ({
+  incidentId,
+  origin,
+  shelters = [],
+  roadGraph,
+  riskZones = [],
+  blockedRoadIds = [],
+  destinationShelterId,
+  peopleCount = 1,
+}) => ({
+  incident_id: String(incidentId),
+  origin: { longitude: origin.lng ?? origin.longitude, latitude: origin.lat ?? origin.latitude },
+  road_graph: roadGraph && roadGraph.graph ? roadGraph : emptyRoadGraphObservation(),
+  risk_zones: riskZones.map((z) => ({
+    zone_id: String(z.zoneId ?? z.zone_id ?? z.id),
+    center: { longitude: z.lng ?? z.longitude, latitude: z.lat ?? z.latitude },
+    radius_m: z.radiusM ?? z.radius_m ?? 500,
+    severity: z.severity ?? 0.5,
+    risk_type: z.riskType ?? z.risk_type ?? 'flood',
+    description: z.description ?? null,
+  })),
+  shelters: shelters.map((s) => ({
+    shelter_id: String(s.shelterId ?? s.shelter_id ?? s.id),
+    name: s.name,
+    location: { longitude: s.lng ?? s.longitude, latitude: s.lat ?? s.latitude },
+    capacity: s.capacity ?? 0,
+    current_occupancy: s.currentOccupancy ?? s.current_occupancy ?? 0,
+    status: s.status ?? 'open',
+  })),
+  blocked_road_ids: blockedRoadIds,
+  destination_shelter_id: destinationShelterId ?? null,
+  people_count: peopleCount,
+});
+
+/** Maps ai_service's EvacuationPlanningResponse to camelCase (shape is already a good fit). */
+const mapEvacuationPlanningResponseToLegacy = (response) => deepCamelCase(response);
+
 module.exports = {
   deepCamelCase,
   mapSkillsToAI,
@@ -247,4 +293,6 @@ module.exports = {
   mapVolunteerMatchingResponseToLegacy,
   buildGraniteGenerationRequest,
   mapGraniteGenerationResponseToLegacy,
+  buildEvacuationPlanningRequest,
+  mapEvacuationPlanningResponseToLegacy,
 };

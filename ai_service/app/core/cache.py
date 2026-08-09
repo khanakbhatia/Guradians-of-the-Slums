@@ -38,16 +38,25 @@ class TTLCache:
         self._lock = threading.RLock()
 
     def get_or_set(self, key: str, factory: Callable[[], T], ttl_seconds: int | None = None) -> T:
-        """Return cached value or compute and cache it."""
+        """Return cached value or compute and cache it.
 
-        with self._lock:
-            cached = self.get(key)
-            if cached is not None:
-                return cached  # type: ignore[return-value]
+        The factory is deliberately invoked OUTSIDE the lock. Holding the
+        lock across factory() serialized every caller of this cache behind
+        one slow computation - a Granite generation can take up to 60s, so
+        two concurrent requests for *different* keys would queue behind
+        each other and the service would appear hung. The tradeoff is that
+        two racing callers for the same missing key may both compute it;
+        that is harmless here (the factories are pure/idempotent) and far
+        cheaper than a lock convoy. Only the dict reads/writes are locked.
+        """
 
-            value = factory()
-            self.set(key, value, ttl_seconds=ttl_seconds)
-            return value
+        cached = self.get(key)
+        if cached is not None:
+            return cached  # type: ignore[return-value]
+
+        value = factory()
+        self.set(key, value, ttl_seconds=ttl_seconds)
+        return value
 
     def get(self, key: str) -> object | None:
         """Return a cached value if present and fresh."""

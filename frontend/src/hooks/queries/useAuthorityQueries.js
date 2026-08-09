@@ -4,7 +4,12 @@ import api from "@/lib/axios";
 import { ENDPOINTS } from "@/api/endpoints";
 import { QK } from "@/api/queryKeys";
 
-const LIVE_DASHBOARD_REFETCH_MS = 5000;
+// 20s, not 5s. At 5s this dashboard generated ~84 requests/minute (the
+// overview stat strip alone fans out into 4 parallel count queries), which
+// blew through the API's global rate limit and made every widget hang on
+// 429s. 20s still reads as "live" for an operations dashboard while cutting
+// request volume ~4x.
+const LIVE_DASHBOARD_REFETCH_MS = 20000;
 
 function formatTime(value) {
   if (!value) return "";
@@ -30,7 +35,7 @@ function mapReportToApprovalItem(report) {
 export function useRiskZones() {
   return useQuery({
     queryKey: QK.authorityRiskZones,
-    queryFn: async () => (await api.get(ENDPOINTS.AUTHORITY_RISK_ZONES)).data.riskZones,
+    queryFn: async () => (await api.get(ENDPOINTS.AUTHORITY_RISK_ZONES, { params: { limit: 100 } })).data.riskZones,
     refetchInterval: LIVE_DASHBOARD_REFETCH_MS,
   });
 }
@@ -98,24 +103,113 @@ export function useAuthorityAlerts() {
 export function useAuthorityAnalytics() {
   return useQuery({
     queryKey: QK.authorityAnalytics,
-    queryFn: async () => {
-      throw new Error("No backend endpoint for authority-scoped analytics yet");
-    },
-    retry: false,
+    queryFn: async () => (await api.get(ENDPOINTS.AUTHORITY_ANALYTICS)).data.analytics,
   });
 }
 
+/**
+ * Volunteer summary, shaped as FIELD TEAMS rather than individuals.
+ *
+ * VolunteerSummary.jsx renders Team / Zone / Members / Status / Tasks done,
+ * but GET /volunteers returns individual Volunteer documents, which have no
+ * `name`, `zone`, `members` or `tasksDone` field at all — so every column
+ * except Status rendered blank. A Volunteer is a person, not a team, so the
+ * fix is to aggregate them into the teams the table is actually describing:
+ * volunteers are grouped by their NGO affiliation (the real-world "team"),
+ * with member counts and completed-task totals summed per team.
+ *
+ * Zone is resolved from each volunteer's currentLocation against the risk
+ * zones already in the React Query cache (nearest zone centroid), so this
+ * needs no extra network request and no new backend endpoint.
+ */
 export function useVolunteerSummary() {
+  const { data: zones } = useRiskZones();
+
   return useQuery({
-    queryKey: QK.authorityVolunteers,
-    queryFn: async () => (await api.get(ENDPOINTS.AUTHORITY_VOLUNTEERS)).data.volunteers,
+    queryKey: [...QK.authorityVolunteers, "teams", zones?.length ?? 0],
+    queryFn: async () => {
+      const volunteers = (await api.get(ENDPOINTS.AUTHORITY_VOLUNTEERS)).data.volunteers || [];
+
+      const nearestZoneName = (coords) => {
+        if (!coords?.length || !zones?.length) return "—";
+        let best = null;
+        let bestDist = Infinity;
+        for (const z of zones) {
+          const ring = z.geometry?.coordinates?.[0];
+          if (!ring?.length) continue;
+          // Polygon centroid (mean of ring vertices) is accurate enough to
+          // pick the nearest zone at settlement scale.
+          const cx = ring.reduce((s, p) => s + p[0], 0) / ring.length;
+          const cy = ring.reduce((s, p) => s + p[1], 0) / ring.length;
+          const d = (coords[0] - cx) ** 2 + (coords[1] - cy) ** 2;
+          if (d < bestDist) {
+            bestDist = d;
+            best = z;
+          }
+        }
+        return best?.settlement || best?.name || "—";
+      };
+
+      const teams = new Map();
+      for (const v of volunteers) {
+        const teamName = v.ngoAffiliation || "Independent volunteers";
+        if (!teams.has(teamName)) {
+          teams.set(teamName, {
+            id: teamName,
+            name: teamName,
+            zones: new Map(),
+            members: 0,
+            tasksDone: 0,
+            available: 0,
+            busy: 0,
+          });
+        }
+        const team = teams.get(teamName);
+        team.members += 1;
+        team.tasksDone += v.completedTasksCount || 0;
+        if (v.availability === "available") team.available += 1;
+        if (v.availability === "busy") team.busy += 1;
+
+        const zoneName = nearestZoneName(v.currentLocation?.coordinates);
+        team.zones.set(zoneName, (team.zones.get(zoneName) || 0) + 1);
+      }
+
+      return [...teams.values()]
+        .map((t) => {
+          // Label the team with the zone most of its members are working in.
+          const zone = [...t.zones.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "—";
+          // Map onto the status vocabulary VolunteerSummary's STATUS_VARIANT
+          // already understands: active / standby / off-duty.
+          const status = t.available > 0 ? "active" : t.busy > 0 ? "standby" : "off-duty";
+          return { id: t.id, name: t.name, zone, members: t.members, tasksDone: t.tasksDone, status };
+        })
+        .sort((a, b) => b.members - a.members);
+    },
+    enabled: true,
   });
 }
 
 export function useAuthorityIncidentFeed() {
   return useQuery({
     queryKey: QK.authorityIncidents,
-    queryFn: async () => (await api.get(ENDPOINTS.AUTHORITY_INCIDENTS)).data.incidents,
+    queryFn: async () => {
+      const response = await api.get(ENDPOINTS.AUTHORITY_INCIDENTS);
+      const incidents = response.data.incidents || [];
+      return incidents.map((inc) => ({
+        id: inc._id || inc.id,
+        zone: inc.riskZone?.name || inc.riskZone?.blockId || "General Area",
+        // Incident.model.js calls this field `type` (enum INCIDENT_TYPES);
+        // `hazardType` is RiskZone's field name, not Incident's. Reading
+        // inc.hazardType returned undefined, so the incident feed's Type
+        // column rendered blank for every row. Fall back to the zone's
+        // hazardType only if the incident itself has none.
+        type: inc.type || inc.riskZone?.hazardType,
+        severity: inc.severity,
+        team: inc.assignedVolunteer?.user?.name || "Unassigned",
+        eta: inc.estimatedTimeMinutes ? `${inc.estimatedTimeMinutes} mins` : "—",
+        time: inc.createdAt ? new Date(inc.createdAt).toLocaleString() : "—",
+      }));
+    },
     refetchInterval: LIVE_DASHBOARD_REFETCH_MS,
   });
 }
@@ -146,28 +240,19 @@ export function useApprovalDecision() {
       );
       queryClient.invalidateQueries({ queryKey: QK.authorityOverview });
       queryClient.invalidateQueries({ queryKey: QK.authorityIncidents });
+      queryClient.invalidateQueries({ queryKey: QK.authorityRiskZones });
+      queryClient.invalidateQueries({ queryKey: QK.authorityAlerts });
+      queryClient.invalidateQueries({ queryKey: QK.authorityAnalytics });
+      queryClient.invalidateQueries({ queryKey: QK.authorityAiRecommendations });
       queryClient.invalidateQueries({ queryKey: QK.volunteerNearbyRequests });
     },
   });
 }
 
-/**
- * NOT WIRED UP: the backend has no "recommendations feed" endpoint — only
- * POST /ai/assign-volunteers, which is per-incident (needs an
- * incidentId) and returns one recommendation, not an ambient list. This
- * dashboard widget assumes a standing list with no incident selected, so
- * it needs a UX decision (which incident? on-demand vs. background job?)
- * before it can call the real endpoint — that's product/design work, not
- * an endpoint fix, so it's flagged here instead of guessed at.
- */
 export function useAiRecommendations() {
   return useQuery({
     queryKey: QK.authorityAiRecommendations,
-    queryFn: async () => {
-      throw new Error(
-        "No backend endpoint for an AI recommendations feed yet — see useAiRecommendations in useAuthorityQueries.js"
-      );
-    },
-    retry: false,
+    queryFn: async () => (await api.get(ENDPOINTS.AUTHORITY_AI_RECOMMENDATIONS)).data.recommendations,
+    refetchInterval: 15000,
   });
 }

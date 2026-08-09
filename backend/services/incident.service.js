@@ -81,7 +81,19 @@ const listIncidents = async (query) => {
   const filter = parseFilters(query, LIST_FILTER_FIELDS);
 
   const [incidents, totalItems] = await Promise.all([
-    Incident.find(filter).sort(sort).skip(skip).limit(limit),
+    // NOTE: do NOT populate 'assignedVolunteer' here. That field lives on
+    // Task.model.js, not Incident.model.js — an Incident is never directly
+    // assigned to a volunteer; the Tasks raised against it are. Populating a
+    // path that isn't in the schema makes Mongoose throw under its default
+    // `strictPopulate`, which took down GET /incidents entirely (500 for
+    // every caller: the authority overview counts, the incident feed, and
+    // anything else reading incidents) with
+    // "Cannot populate path `assignedVolunteer` because it is not in your schema".
+    Incident.find(filter)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .populate('riskZone', 'name blockId settlement riskLevel'),
     Incident.countDocuments(filter),
   ]);
 

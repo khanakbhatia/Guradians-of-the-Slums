@@ -1,11 +1,19 @@
 import { Bell } from "lucide-react";
 
-import { useCitizenNotifications, useMarkNotificationRead } from "@/hooks/queries/useCitizenQueries";
+import { useCitizenNotifications, useMarkNotificationRead, useCitizenReports } from "@/hooks/queries/useCitizenQueries";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Eyebrow, Muted } from "@/components/ui/typography";
 import { cn } from "@/lib/utils";
 import { ListCardSkeleton } from "@/components/common/skeletons";
 import ErrorState from "@/components/common/ErrorState";
+import { StatusChip } from "@/components/ui/status-chip";
+
+function formatTime(val) {
+  if (!val) return "";
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return val;
+  return d.toLocaleString();
+}
 
 /**
  * My reports & recent updates — one feed, since report-status changes
@@ -14,9 +22,44 @@ import ErrorState from "@/components/common/ErrorState";
  */
 function RecentNotifications() {
   const { data: notifications, isLoading, isError, error, refetch, isRefetching } = useCitizenNotifications();
+  const { data: reports, isLoading: reportsLoading, isError: reportsError, error: reportsErr, refetch: refetchReports, isRefetching: isRefetchingReports } = useCitizenReports();
   const markRead = useMarkNotificationRead();
 
-  if (isLoading) return <ListCardSkeleton rows={4} />;
+  if (isLoading || reportsLoading) return <ListCardSkeleton rows={4} />;
+
+  const combinedError = isError || reportsError;
+  const errorObj = error || reportsErr;
+  const anyRefetching = isRefetching || isRefetchingReports;
+
+  const handleRetry = () => {
+    refetch();
+    refetchReports();
+  };
+
+  const notificationsData = notifications || [];
+  const reportsData = reports || [];
+
+  const combined = [
+    ...notificationsData.map((n) => ({
+      id: n.id || n._id,
+      title: n.title,
+      message: n.message,
+      createdAt: n.createdAt,
+      isRead: n.isRead,
+      type: "notification",
+      priority: n.priority,
+    })),
+    ...reportsData.map((r) => ({
+      id: r.id || r._id,
+      title: `Reported: ${r.hazardType.toUpperCase().replace("_", " ")}`,
+      message: r.description,
+      createdAt: r.createdAt,
+      isRead: true,
+      type: "report",
+      status: r.status,
+      severity: r.severity,
+    })),
+  ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   return (
     <Card>
@@ -28,33 +71,64 @@ function RecentNotifications() {
         <Bell className="size-4 text-muted-foreground" />
       </CardHeader>
 
-      {isError ? (
+      {combinedError ? (
         <CardContent>
-          <ErrorState context="your reports & updates" detail={error?.message} onRetry={refetch} retrying={isRefetching} compact />
+          <ErrorState context="your reports & updates" detail={errorObj?.message} onRetry={handleRetry} retrying={anyRefetching} compact />
         </CardContent>
-      ) : notifications.length === 0 ? (
+      ) : combined.length === 0 ? (
         <CardContent>
           <Muted>Nothing to report yet.</Muted>
         </CardContent>
       ) : (
         <CardContent className="divide-y divide-border p-0">
-          {notifications.map((n) => (
-            <button
-              key={n.id}
-              onClick={() => markRead.mutate(n.id)}
-              className={cn(
-                "flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-accent",
-                !n.isRead && "bg-primary/5"
-              )}
-            >
-              <span className={cn("mt-1.5 size-1.5 shrink-0 rounded-full", n.isRead ? "bg-transparent" : "bg-primary")} />
-              <div className="min-w-0 flex-1">
-                <div className="text-xs font-medium text-foreground">{n.title}</div>
-                <Muted className="mt-0.5">{n.message}</Muted>
-                <Eyebrow className="mt-1 block">{n.createdAt}</Eyebrow>
-              </div>
-            </button>
-          ))}
+          {combined.map((item) => {
+            if (item.type === "notification") {
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => markRead.mutate(item.id)}
+                  className={cn(
+                    "flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-accent",
+                    !item.isRead && "bg-primary/5"
+                  )}
+                >
+                  <span className={cn("mt-1.5 size-1.5 shrink-0 rounded-full", item.isRead ? "bg-transparent" : "bg-primary")} />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-medium text-foreground">{item.title}</div>
+                    <Muted className="mt-0.5">{item.message}</Muted>
+                    <Eyebrow className="mt-1 block">{formatTime(item.createdAt)}</Eyebrow>
+                  </div>
+                </button>
+              );
+            } else {
+              return (
+                <div
+                  key={item.id}
+                  className="flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left transition-colors hover:bg-accent"
+                >
+                  <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-transparent" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-xs font-medium text-foreground">{item.title}</div>
+                      <StatusChip
+                        variant={
+                          item.status === "verified" ? "success" :
+                          item.status === "pending" ? "warning" :
+                          item.status === "flagged" ? "destructive" :
+                          item.status === "rejected" ? "destructive" :
+                          "neutral"
+                        }
+                      >
+                        {item.status}
+                      </StatusChip>
+                    </div>
+                    <Muted className="mt-0.5">{item.message}</Muted>
+                    <Eyebrow className="mt-1 block">{formatTime(item.createdAt)}</Eyebrow>
+                  </div>
+                </div>
+              );
+            }
+          })}
         </CardContent>
       )}
     </Card>
@@ -62,3 +136,4 @@ function RecentNotifications() {
 }
 
 export default RecentNotifications;
+

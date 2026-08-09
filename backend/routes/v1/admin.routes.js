@@ -399,6 +399,7 @@ router.get(
  *       422: { $ref: '#/components/responses/ValidationError' }
  */
 router.post('/volunteers/:id/approve', [idParamValidator], validateRequest, adminController.approveVolunteer);
+router.post('/volunteers/:id/reject', [idParamValidator], validateRequest, adminController.rejectVolunteer);
 
 // ---------------------------------------------------------------------------
 // Suspend User

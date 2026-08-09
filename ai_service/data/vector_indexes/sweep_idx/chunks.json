@@ -1,0 +1,28 @@
+[
+  {
+    "chunk_id": "sweep_idx:0",
+    "document_id": "d1",
+    "source_type": "government_sop",
+    "title": "Flood SOP",
+    "source_uri": null,
+    "text": "Heavy rainfall detected. Residents must move to higher ground immediately. Avoid flooded roads and follow evacuation guidance from local authorities.",
+    "metadata": {
+      "published_at": null,
+      "jurisdiction": null,
+      "tags": ""
+    }
+  },
+  {
+    "chunk_id": "sweep_idx:1",
+    "document_id": "d2",
+    "source_type": "disaster_guideline",
+    "title": "Shelter Guidance",
+    "source_uri": null,
+    "text": "Designated shelters open when rainfall exceeds 100mm in 24 hours. Bring identification and essential medication.",
+    "metadata": {
+      "published_at": null,
+      "jurisdiction": null,
+      "tags": ""
+    }
+  }
+]

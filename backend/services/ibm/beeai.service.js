@@ -50,9 +50,13 @@ const {
   mapRiskScoringResponseToLegacy,
   buildVolunteerMatchingRequest,
   mapVolunteerMatchingResponseToLegacy,
+  buildEvacuationPlanningRequest,
+  mapEvacuationPlanningResponseToLegacy,
 } = require('./mappers');
+const { mockRiskScore, mockVolunteerAssignment, mockEvacuationRoute } = require('./mockFallback');
 
 const graniteService = new GraniteService();
+const isUnavailable = (err) => err?.statusCode === 503 || err?.statusCode === 504 || err?.statusCode === 502;
 
 class BeeAIService extends IBMServiceBase {
   constructor() {
@@ -70,8 +74,18 @@ class BeeAIService extends IBMServiceBase {
       weatherData: input.weatherData,
       historicalContext: input.historicalContext,
     });
-    const scoreResponse = await aiServiceClient.postJSON('/risk-score', scoreRequest);
-    const legacy = mapRiskScoringResponseToLegacy(scoreResponse);
+    let legacy;
+    try {
+      const scoreResponse = await aiServiceClient.postJSON('/risk-score', scoreRequest);
+      legacy = mapRiskScoringResponseToLegacy(scoreResponse);
+    } catch (err) {
+      if (!isUnavailable(err)) throw err;
+      logger.warn('BeeAIService.analyzeRisk: ai_service unavailable, returning mock risk score', {
+        areaId: scoreRequest.area_id,
+        error: err.message,
+      });
+      legacy = mockRiskScore(scoreRequest.area_id);
+    }
 
     if (!input.incidentId) {
       logger.info('BeeAIService.analyzeRisk: no incidentId supplied, skipping agent orchestration', {
@@ -153,8 +167,17 @@ class BeeAIService extends IBMServiceBase {
       limit: 20,
     });
 
-    const response = await aiServiceClient.postJSON('/assign', request);
-    return mapVolunteerMatchingResponseToLegacy(response);
+    try {
+      const response = await aiServiceClient.postJSON('/assign', request);
+      return mapVolunteerMatchingResponseToLegacy(response);
+    } catch (err) {
+      if (!isUnavailable(err)) throw err;
+      logger.warn('BeeAIService.assignVolunteer: ai_service unavailable, returning mock ranking', {
+        taskId: input.taskId,
+        error: err.message,
+      });
+      return mockVolunteerAssignment(request.volunteers);
+    }
   }
 
   /**
@@ -162,6 +185,32 @@ class BeeAIService extends IBMServiceBase {
    */
   async summarizeIncident(input) {
     return graniteService.summarizeIncident(input);
+  }
+
+  /**
+   * Generates best/alternative evacuation routes for an incident (Volunteer
+   * Coordinator / Evacuation Agent's entry point, ai_service POST /evacuate).
+   * Callers supply shelters (and optionally a road graph / risk zones) since
+   * this project has no persisted Shelter model yet — see
+   * services/ibm/mappers.js#buildEvacuationPlanningRequest.
+   * @param {{ incidentId: string, origin: {lng:number, lat:number}, shelters: Array, roadGraph?: object, riskZones?: Array, blockedRoadIds?: string[], destinationShelterId?: string, peopleCount?: number }} input
+   */
+  async planEvacuation(input = {}) {
+    if (!input.incidentId || !input.origin) {
+      throw new ApiError(422, 'planEvacuation requires "incidentId" and "origin" ({ lng, lat }).');
+    }
+    const request = buildEvacuationPlanningRequest(input);
+    try {
+      const response = await aiServiceClient.postJSON('/evacuate', request);
+      return mapEvacuationPlanningResponseToLegacy(response);
+    } catch (err) {
+      if (!isUnavailable(err)) throw err;
+      logger.warn('BeeAIService.planEvacuation: ai_service unavailable, returning mock route', {
+        incidentId: input.incidentId,
+        error: err.message,
+      });
+      return mockEvacuationRoute(input);
+    }
   }
 }
 

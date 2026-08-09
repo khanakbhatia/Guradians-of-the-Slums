@@ -8,6 +8,7 @@ import { Eyebrow, Muted } from "@/components/ui/typography";
 import { ListCardSkeleton } from "@/components/common/skeletons";
 import ErrorState from "@/components/common/ErrorState";
 import { toast } from "@/hooks/use-toast";
+import { getImageUrl } from "@/lib/utils";
 
 /**
  * Approve/reject now hits the real API via useApprovalDecision — the
@@ -77,6 +78,25 @@ function TaskApprovalQueue() {
                   </div>
                   <div className="mt-1 text-sm text-foreground/90">{item.summary}</div>
                   <Muted className="mt-0.5">Requested by {item.requestedBy}</Muted>
+                  {item.photos && item.photos.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {item.photos.map((photo, idx) => (
+                        <a
+                          key={idx}
+                          href={getImageUrl(photo.url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group relative block overflow-hidden rounded border border-border bg-secondary/30 transition-all hover:border-primary/50"
+                        >
+                          <img
+                            src={getImageUrl(photo.url)}
+                            alt={`Evidence ${idx + 1}`}
+                            className="size-16 object-cover transition-transform duration-200 group-hover:scale-105"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
                   <Button
@@ -108,3 +128,4 @@ function TaskApprovalQueue() {
 }
 
 export default TaskApprovalQueue;
+

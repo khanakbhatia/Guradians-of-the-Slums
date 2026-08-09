@@ -13,6 +13,14 @@ import { ROLE_HOME_ROUTE } from "@/constants";
 function RoleGuard({ roles, children }) {
   const { user } = useAuth();
 
+  // Defensive guard: RoleGuard currently only renders inside ProtectedRoute's
+  // <Outlet/>, which already guarantees `user` is set, but a null-check here
+  // avoids a hard crash if that invariant ever changes (e.g. this component
+  // gets reused elsewhere).
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
   if (!roles.includes(user.role)) {
     return <Navigate to={ROLE_HOME_ROUTE[user.role]} replace />;
   }

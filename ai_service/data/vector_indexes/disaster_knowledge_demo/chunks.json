@@ -1,0 +1,28 @@
+[
+  {
+    "chunk_id": "disaster_knowledge_demo:0",
+    "document_id": "sop-flood",
+    "source_type": "government_sop",
+    "title": "Municipal Flood SOP 2023",
+    "source_uri": null,
+    "text": "When rainfall exceeds 100mm in 24 hours, residents of low-lying settlements must move to higher ground. Designated shelters open automatically at this threshold.",
+    "metadata": {
+      "published_at": null,
+      "jurisdiction": null,
+      "tags": ""
+    }
+  },
+  {
+    "chunk_id": "disaster_knowledge_demo:1",
+    "document_id": "guide-shelter",
+    "source_type": "disaster_guideline",
+    "title": "Shelter Operations Guideline",
+    "source_uri": null,
+    "text": "Evacuees should carry identification and essential medication. Avoid flooded roads and damaged electrical infrastructure during movement.",
+    "metadata": {
+      "published_at": null,
+      "jurisdiction": null,
+      "tags": ""
+    }
+  }
+]

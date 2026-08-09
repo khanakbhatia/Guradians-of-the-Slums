@@ -13,6 +13,7 @@
  *   POST /generate-report   -> BeeAIService.generateReport -> POST /report (via GraniteService) — RAG-grounded generation, the Report Generator Agent's entry point
  *   POST /assign-volunteers -> BeeAIService.assignVolunteer -> POST /assign — the Volunteer Coordinator Agent's entry point; the future upgrade path for task.service.js's dummy skill-match, which stays the system of record for now
  *   POST /explain-risk      -> GraniteService.analyzeRisk  -> POST /explain — Granite's documented role for this method is explaining a score, not computing one; matches the "Explain this prediction" feature
+ *   POST /evacuation-routes -> BeeAIService.planEvacuation -> POST /evacuate — the Evacuation Agent's entry point; plans best/alternative routes to a shelter
  *
  * This mapping is a starting point, not a constraint the wrappers enforce —
  * change it in this file alone if a different service turns out to fit better.
@@ -223,5 +224,46 @@ router.post(
  *       504: { description: "ai_service request timed out" }
  */
 router.post('/explain-risk', [mongoIdOptional('riskZoneId')], validateRequest, aiController.explainRisk);
+
+/**
+ * @swagger
+ * /ai/evacuation-routes:
+ *   post:
+ *     tags: [AI]
+ *     summary: Generate evacuation routes (BeeAIService.planEvacuation)
+ *     description: "Evacuation Agent's entry point (ai_service POST /evacuate) — plans a best route and one alternative from an origin point to the best available shelter, avoiding blocked roads/risk zones. Requires incidentId, origin, and a shelters list (this project has no persisted Shelter model yet, so callers supply candidate shelters — e.g. from frontend/src/data/mapData.js fixtures — directly). Falls back to a straight-line placeholder route if ai_service is unreachable."
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [incidentId, origin, shelters]
+ *             properties:
+ *               incidentId: { type: string }
+ *               origin: { type: object, properties: { lng: { type: number }, lat: { type: number } } }
+ *               shelters: { type: array, items: { type: object } }
+ *               riskZones: { type: array, items: { type: object } }
+ *               blockedRoadIds: { type: array, items: { type: string } }
+ *               destinationShelterId: { type: string }
+ *               peopleCount: { type: integer }
+ *     responses:
+ *       200:
+ *         description: "{ incidentId, priority, bestRoute, alternativeRoute, blockedRoadIds, planningMethod }"
+ *       401: { $ref: '#/components/responses/UnauthorizedError' }
+ *       403: { $ref: '#/components/responses/ForbiddenError' }
+ *       422: { $ref: '#/components/responses/ValidationError' }
+ */
+router.post(
+  '/evacuation-routes',
+  [
+    body('incidentId').isMongoId(),
+    body('origin.lng').isFloat({ min: -180, max: 180 }),
+    body('origin.lat').isFloat({ min: -90, max: 90 }),
+    body('shelters').isArray(),
+  ],
+  validateRequest,
+  aiController.evacuationRoutes
+);
 
 module.exports = router;

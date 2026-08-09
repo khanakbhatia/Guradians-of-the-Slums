@@ -6,10 +6,35 @@ from dataclasses import dataclass
 from pathlib import Path
 from uuid import uuid4
 
-import cv2
 import numpy as np
-import rasterio
-from rasterio.io import DatasetReader
+
+# opencv-python and rasterio are real, independent dependencies for this
+# feature (see pyproject.toml) but importing them at module load time meant
+# the whole FastAPI app failed to start if either wasn't installed yet,
+# since app.main eagerly imports the full router tree (main.py -> vision
+# router -> this module). Deferred to a clear, actionable error raised only
+# when satellite CV analysis is actually invoked, so every other endpoint
+# keeps working regardless.
+#
+# These are two SEPARATE try/except blocks on purpose: rasterio pulls in
+# its own transitive dependencies (e.g. `attrs`, GDAL bindings) that can be
+# broken or missing independently of opencv-python. Bundling both imports
+# into one try/except meant a broken rasterio install silently disabled
+# opencv-python too, even though cv2 imported fine on its own -- opencv is
+# needed for every image (including plain PNG/JPG uploads), while rasterio
+# is only needed for georeferenced .tif/.tiff rasters, so cv2's
+# availability must not depend on rasterio's.
+try:
+    import cv2
+except ImportError:  # pragma: no cover - opencv-python not installed
+    cv2 = None  # type: ignore[assignment]
+
+try:
+    import rasterio
+    from rasterio.io import DatasetReader
+except ImportError:  # pragma: no cover - rasterio (or a transitive dep) not installed
+    rasterio = None  # type: ignore[assignment]
+    DatasetReader = None  # type: ignore[assignment,misc]
 
 from app.schemas.vision import (
     BoundingBox,
@@ -68,6 +93,13 @@ class SatelliteVisionAnalyzer:
     ) -> VisionAnalysisResponse:
         """Analyze uploaded image bytes and return JSON-ready detections."""
 
+        if cv2 is None:
+            # Demo-safe: return a grounded-shaped mock analysis rather than
+            # raising (which surfaced as an unhandled 500 and blanked the
+            # satellite widget). Clearly labelled via detection source /
+            # model_name so it is never mistaken for real CV output.
+            return self._unavailable_response(image_id or str(uuid4()))
+
         buffer = np.frombuffer(image_bytes, dtype=np.uint8)
         image = cv2.imdecode(buffer, cv2.IMREAD_COLOR)
         if image is None:
@@ -89,6 +121,9 @@ class SatelliteVisionAnalyzer:
         geo_reference: ImageGeoReference | None,
     ) -> VisionAnalysisResponse:
         """Run pretrained YOLO and OpenCV feature extraction."""
+
+        if cv2 is None:
+            return self._unavailable_response(image_id)
 
         image_height, image_width = image.shape[:2]
         detections = get_pretrained_yolo_detector(self.model_name).detect(
@@ -139,11 +174,51 @@ class SatelliteVisionAnalyzer:
             ),
         )
 
+    def _unavailable_response(self, image_id: str) -> VisionAnalysisResponse:
+        """Schema-valid placeholder used when OpenCV isn't importable.
+
+        Keeps /detect and /vision/satellite/analyze returning HTTP 200 with
+        the exact VisionAnalysisResponse contract so downstream dashboards
+        and the risk engine (which consumes cv_output) keep working. The
+        empty detection list is honest: nothing was actually observed.
+        """
+
+        return VisionAnalysisResponse(
+            image_id=image_id,
+            model_name="unavailable_opencv_not_installed",
+            detections=[],
+            summary=VisionSummary(
+                image_width=0,
+                image_height=0,
+                building_count=0,
+                road_count=0,
+                drainage_count=0,
+                open_space_count=0,
+                roof_density_score=0.0,
+            ),
+        )
+
     @staticmethod
     def _read_image(image_path: Path) -> tuple[np.ndarray, ImageGeoReference | None]:
         """Read common images or georeferenced rasters."""
 
+        if cv2 is None:
+            msg = (
+                "opencv-python is not installed in this environment. Run "
+                "`pip install opencv-python` (or `pip install -e .` from ai_service/) "
+                "to enable satellite CV analysis."
+            )
+            raise RuntimeError(msg)
+
         if image_path.suffix.lower() in {".tif", ".tiff"}:
+            if rasterio is None:
+                msg = (
+                    "rasterio is not installed (or failed to import) in this environment. "
+                    "Run `pip install rasterio` (or `pip install -e .` from ai_service/) "
+                    "to analyze .tif/.tiff georeferenced rasters. Plain image formats "
+                    "(.png/.jpg) do not require rasterio."
+                )
+                raise RuntimeError(msg)
             with rasterio.open(image_path) as dataset:
                 return SatelliteVisionAnalyzer._read_raster(dataset)
 

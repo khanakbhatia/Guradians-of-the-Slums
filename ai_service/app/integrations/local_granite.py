@@ -72,11 +72,32 @@ class LocalGraniteClient:
         try:
             with urllib.request.urlopen(http_request, timeout=self.timeout_seconds) as response:
                 response_body = response.read().decode("utf-8")
+        except TimeoutError as exc:
+            # ROOT CAUSE of the reported 500: urlopen's `timeout=` only
+            # covers the connect phase reliably; a slow/hung local model
+            # generating a long response can time out on the READ phase
+            # (response.read()) instead, which raises a bare TimeoutError
+            # (socket.timeout is a TimeoutError alias in Python 3.10+) -
+            # NOT urllib.error.URLError. That was never caught here, so it
+            # propagated all the way up as an unhandled exception and
+            # FastAPI's generic handler turned it into an HTTP 500.
+            msg = (
+                f"Local Granite request to {self.base_url} timed out after "
+                f"{self.timeout_seconds}s (model {self.model_id})."
+            )
+            raise GraniteRuntimeError(msg) from exc
         except urllib.error.URLError as exc:
             msg = (
                 "Local Granite runtime is unavailable. Start an Ollama-compatible "
                 f"Granite server at {self.base_url} with model {self.model_id}."
             )
+            raise GraniteRuntimeError(msg) from exc
+        except Exception as exc:  # noqa: BLE001 - defensive: any other transport failure
+            # Belt-and-suspenders: whatever else urllib/http.client can throw
+            # (ConnectionResetError, http.client.HTTPException, etc.) must
+            # still come out as GraniteRuntimeError, never as a bare
+            # exception that becomes an unhandled 500.
+            msg = f"Local Granite request to {self.base_url} failed unexpectedly: {exc}"
             raise GraniteRuntimeError(msg) from exc
 
         return self._normalize_response(response_body)

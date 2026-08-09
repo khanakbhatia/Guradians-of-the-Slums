@@ -53,6 +53,11 @@ const approveVolunteer = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, { volunteer }, 'Volunteer approved'));
 });
 
+const rejectVolunteer = asyncHandler(async (req, res) => {
+  const volunteer = await adminService.rejectVolunteer(req.params.id, req.user);
+  res.status(200).json(new ApiResponse(200, { volunteer }, 'Volunteer rejected'));
+});
+
 const suspendUser = asyncHandler(async (req, res) => {
   const user = await adminService.suspendUser(req.params.id, req.user, req.body.reason);
   res.status(200).json(new ApiResponse(200, { user }, 'User suspended'));
@@ -83,6 +88,7 @@ module.exports = {
   approveReport,
   getPendingVolunteers,
   approveVolunteer,
+  rejectVolunteer,
   suspendUser,
   unsuspendUser,
   listLogFiles,

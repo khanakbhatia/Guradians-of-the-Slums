@@ -10,6 +10,7 @@ from app.integrations.local_granite import (
 )
 from app.schemas.agents import (
     BeeAIAgentResult,
+    BeeAIFailure,
     BeeAIOrchestrationRequest,
     BeeAIOrchestrationResponse,
     BeeAIWorkflowStep,
@@ -88,8 +89,26 @@ class GraniteDisasterCoordinator:
                     attempt=attempt,
                 )
                 if not retryable:
-                    final_answer = "Granite orchestration failed after all retry attempts."
-                    agent_results = self._failed_agent_results(steps, attempt, str(exc))
+                    # DEMO-SAFE FALLBACK: rather than returning an empty
+                    # "orchestration failed" shell (which left the frontend
+                    # with nothing to render), build each agent's output
+                    # from the RAG contexts we can still retrieve. Status is
+                    # reported honestly as "degraded" - not "completed" - so
+                    # the failure stays visible in `failures`/`reasoning_flow`
+                    # while the UI still has real, grounded content to show.
+                    agent_results = await self._degraded_agent_results(
+                        request, steps, attempt, exc
+                    )
+                    final_answer = self._final_answer(agent_results)
+                    status = "degraded"
+                    log.event(
+                        event_type="workflow_degraded",
+                        message=(
+                            "Granite unavailable after all retries; returned "
+                            "RAG-grounded fallback output instead of failing."
+                        ),
+                        attempt=attempt,
+                    )
                     break
                 await asyncio.sleep(min(2**attempt, 8))
 
@@ -122,21 +141,31 @@ class GraniteDisasterCoordinator:
             step_id=step.step_id,
             agent=step.agent,
         )
-        contexts = self._retrieve_contexts(request, step)
+        # Both the RAG retrieval (FAISS read) and the Granite call are
+        # BLOCKING synchronous I/O. Calling them directly from this async
+        # coroutine froze the entire uvicorn event loop for the full
+        # duration of the workflow - measured at 18.7s with a 3s/step
+        # model, and up to several MINUTES with the real 60s timeout
+        # across ~6 steps and retries. While blocked, every other endpoint
+        # (health checks, dashboards, risk scoring) stalled too.
+        # asyncio.to_thread offloads them to the default thread pool so
+        # the event loop stays responsive and requests remain concurrent.
+        contexts = await asyncio.to_thread(self._retrieve_contexts, request, step)
         prompt = self._granite_prompt(request, step, contexts, memory, attempt)
-        response = self.granite_client.generate(
-                LocalGraniteRequest(
-                    prompt=prompt,
-                    task_type=f"agent_{step.agent.value}",
-                    num_predict=CHAT_NUM_PREDICT,
-                    metadata={
+        response = await asyncio.to_thread(
+            self.granite_client.generate,
+            LocalGraniteRequest(
+                prompt=prompt,
+                task_type=f"agent_{step.agent.value}",
+                num_predict=CHAT_NUM_PREDICT,
+                metadata={
                     "incident_id": request.incident_id,
                     "area_id": request.area_id,
                     "step_id": step.step_id,
                     "agent": step.agent.value,
                     "index_name": request.index_name,
                 },
-            )
+            ),
         )
         output = response.text
         await memory.add_agent_output(
@@ -237,23 +266,62 @@ Shared memory:
             f"RAG index: {request.index_name}."
         )
 
-    @staticmethod
-    def _failed_agent_results(
+    async def _degraded_agent_results(
+        self,
+        request: BeeAIOrchestrationRequest,
         steps: list[BeeAIWorkflowStep],
         attempt: int,
-        message: str,
+        exc: Exception,
     ) -> list[BeeAIAgentResult]:
-        return [
-            BeeAIAgentResult(
-                agent=step.agent,
-                step_id=step.step_id,
-                output=f"No output produced because Granite orchestration failed: {message}",
-                status="failed",
-                attempt=attempt,
-                failure=None,
+        """Build grounded per-agent output from RAG when Granite is down.
+
+        Each agent still returns real retrieved knowledge-base content with
+        citation markers, so the demo renders meaningful text instead of an
+        error shell. Marked status="degraded" (never "completed") so the
+        degradation is never mistaken for a real model response.
+        """
+
+        results: list[BeeAIAgentResult] = []
+        for step in steps:
+            try:
+                contexts = await asyncio.to_thread(self._retrieve_contexts, request, step)
+            except Exception:  # noqa: BLE001 - retrieval may also be unavailable
+                contexts = []
+
+            if contexts:
+                body = "\n".join(
+                    f"- {context.title}: {context.text.strip()} [{index + 1}]"
+                    for index, context in enumerate(contexts)
+                )
+                output = (
+                    f"{step.expected_output} (AI model unavailable - "
+                    f"summarized directly from retrieved sources)\n{body}"
+                )
+            else:
+                output = (
+                    f"{step.expected_output}: not available in retrieved sources. "
+                    "AI model unavailable and no grounding context could be retrieved."
+                )
+
+            results.append(
+                BeeAIAgentResult(
+                    agent=step.agent,
+                    step_id=step.step_id,
+                    output=output,
+                    status="degraded",
+                    attempt=attempt,
+                    failure=BeeAIFailure(
+                        failure_id=f"{step.step_id}-fallback-{attempt}",
+                        step_id=step.step_id,
+                        agent=step.agent,
+                        error_type=exc.__class__.__name__,
+                        message=str(exc),
+                        attempt=attempt,
+                        retryable=False,
+                    ),
+                )
             )
-            for step in steps
-        ]
+        return results
 
 
 BeeAIDisasterCoordinator = GraniteDisasterCoordinator

@@ -23,6 +23,10 @@
 const IBMServiceBase = require('./IBMServiceBase');
 const { aiServiceClient } = require('./aiServiceClient');
 const { buildRiskScoringRequest, mapRiskScoringResponseToLegacy } = require('./mappers');
+const { mockRiskScore } = require('./mockFallback');
+const { logger } = require('../../utils/logger');
+
+const isUnavailable = (err) => err?.statusCode === 503 || err?.statusCode === 504 || err?.statusCode === 502;
 
 class WatsonxService extends IBMServiceBase {
   constructor() {
@@ -40,8 +44,17 @@ class WatsonxService extends IBMServiceBase {
       weatherData: input.weatherData,
       historicalContext: input.historicalContext,
     });
-    const response = await aiServiceClient.postJSON('/risk-score', request);
-    return mapRiskScoringResponseToLegacy(response);
+    try {
+      const response = await aiServiceClient.postJSON('/risk-score', request);
+      return mapRiskScoringResponseToLegacy(response);
+    } catch (err) {
+      if (!isUnavailable(err)) throw err;
+      logger.warn('WatsonxService.analyzeRisk: ai_service unavailable, returning mock risk score', {
+        areaId: request.area_id,
+        error: err.message,
+      });
+      return mockRiskScore(request.area_id);
+    }
   }
 
   async generateReport(input) {

@@ -13,9 +13,21 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-import faiss
 import numpy as np
 from langchain_core.documents import Document
+
+try:
+    import faiss
+except ImportError:  # pragma: no cover - faiss-cpu not installed in this environment
+    # faiss-cpu is a real dependency (see pyproject.toml) that should be
+    # installed (`pip install faiss-cpu` or `pip install -e .` from
+    # ai_service/), but importing it at module load time meant the whole
+    # FastAPI app (all routers, not just RAG) failed to start if it was
+    # missing. Deferring the hard failure to actual RAG use lets every
+    # other endpoint (/risk-score, /evacuate, /detect, /assign, health,
+    # etc.) keep working even when this one optional dependency isn't
+    # installed yet.
+    faiss = None  # type: ignore[assignment]
 
 try:
     from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -35,9 +47,29 @@ from app.services.rag.document_loader import KnowledgeDocumentLoader
 
 
 class HashEmbeddingProvider:
-    """Deterministic local embedding fallback for offline retrieval demos."""
+    """Deterministic local embedding fallback for offline retrieval demos.
+
+    Tokens are normalized before hashing (lowercase, punctuation stripped,
+    light suffix stripping). Without normalization the previous
+    implementation split on raw whitespace, so "flood" / "flooded",
+    "shelter" / "shelters." and "evacuation" / "evacuees" all hashed to
+    different buckets - no query token ever collided with a document
+    token, every cosine score came out as exactly 0.0, and retrieved
+    contexts were therefore returned in arbitrary order (the citation
+    ranked [1] was effectively random). Normalizing makes morphological
+    variants share a bucket, which restores meaningful ranking.
+
+    NOTE: changing the embedding changes the vector space, so any index
+    built by an older version must be rebuilt (POST /api/v1/rag/index with
+    rebuild=true) for scores to be comparable.
+    """
 
     dimensions = 384
+
+    # Order matters: longest suffixes first, so "settlements" -> "settlement"
+    # rather than being cut to "settlement" + leftover.
+    _SUFFIXES = ("ations", "ation", "ements", "ement", "ings", "ing", "ies", "ees", "es", "ed", "s")
+    _MIN_STEM_LENGTH = 4
 
     @property
     def name(self) -> str:
@@ -49,9 +81,22 @@ class HashEmbeddingProvider:
     def embed_query(self, text: str) -> np.ndarray:
         return np.array([self._embed(text)], dtype=np.float32)
 
+    @classmethod
+    def _normalize_token(cls, token: str) -> str:
+        """Lowercase, strip non-alphanumerics, then strip a common suffix."""
+
+        cleaned = "".join(char for char in token.lower() if char.isalnum())
+        for suffix in cls._SUFFIXES:
+            if cleaned.endswith(suffix) and len(cleaned) - len(suffix) >= cls._MIN_STEM_LENGTH:
+                return cleaned[: -len(suffix)]
+        return cleaned
+
     def _embed(self, text: str) -> np.ndarray:
         vector = np.zeros(self.dimensions, dtype=np.float32)
-        for token in text.lower().split():
+        for raw_token in text.split():
+            token = self._normalize_token(raw_token)
+            if not token:
+                continue
             digest = hashlib.sha256(token.encode("utf-8")).digest()
             index = int.from_bytes(digest[:4], byteorder="big") % self.dimensions
             sign = 1.0 if digest[4] % 2 == 0 else -1.0
@@ -77,9 +122,10 @@ class RagRetrievalService:
     def build_index(self, request: RagIndexRequest) -> RagIndexResponse:
         """Build or update a FAISS index from knowledge documents."""
 
+        self._require_faiss()
         index_dir = self._index_dir(request.index_name)
         if request.rebuild and index_dir.exists():
-            shutil.rmtree(index_dir)
+            self._rmtree(index_dir)
         index_dir.mkdir(parents=True, exist_ok=True)
 
         documents = [*request.documents, *self.loader.load_paths(request.source_paths)]
@@ -116,7 +162,11 @@ class RagRetrievalService:
         index_dir = self._index_dir(request.index_name)
         index_path = index_dir / "index.faiss"
         metadata_path = index_dir / "chunks.json"
-        if not index_path.exists() or not metadata_path.exists():
+        if faiss is None or not index_path.exists() or not metadata_path.exists():
+            # No crash when faiss isn't installed or no index has been built
+            # yet — an empty context list is the same conservative "nothing
+            # to ground on" signal GraniteClient already handles (it refuses
+            # to fabricate ungrounded text rather than hallucinating one).
             return RagRetrievalResponse(
                 query=request.query,
                 index_name=request.index_name,
@@ -233,3 +283,32 @@ class RagRetrievalService:
     @staticmethod
     def _default_embedding_provider() -> HashEmbeddingProvider:
         return HashEmbeddingProvider()
+
+    @staticmethod
+    def _rmtree(path: Path) -> None:
+        """Delete a directory tree, tolerating filesystems that reject
+        shutil.rmtree's default fd-relative unlink (e.g. some FUSE/network
+        mounts and certain Docker bind mounts raise PermissionError there
+        even though the caller genuinely has permission). Falls back to a
+        plain path-based walk-and-remove, which works everywhere rmtree's
+        fast path doesn't.
+        """
+        try:
+            shutil.rmtree(path)
+        except PermissionError:
+            for child in sorted(path.rglob("*"), key=lambda p: len(p.parts), reverse=True):
+                if child.is_file() or child.is_symlink():
+                    child.unlink(missing_ok=True)
+                elif child.is_dir():
+                    child.rmdir()
+            path.rmdir()
+
+    @staticmethod
+    def _require_faiss() -> None:
+        if faiss is None:
+            msg = (
+                "faiss-cpu is not installed in this environment. Run "
+                "`pip install faiss-cpu` (or `pip install -e .` from ai_service/) "
+                "to enable RAG indexing."
+            )
+            raise RuntimeError(msg)

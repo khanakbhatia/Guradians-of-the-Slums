@@ -17,6 +17,7 @@ router.use('/citizen-reports', require('./citizenReport.routes'));
 router.use('/notifications', require('./notification.routes'));
 router.use('/chat-rooms', require('./chat.routes'));
 router.use('/admin', require('./admin.routes'));
+router.use('/authority', require('./authority.routes'));
 router.use('/ai', require('./ai.routes'));
 router.use('/media', require('./media.routes'));
 

@@ -1,0 +1,15 @@
+[
+  {
+    "chunk_id": "test_index:0",
+    "document_id": "doc1",
+    "source_type": "government_sop",
+    "title": "Flood SOP",
+    "source_uri": null,
+    "text": "Evacuate low-lying areas when rainfall exceeds 100mm in 24 hours. Move to designated shelters.",
+    "metadata": {
+      "published_at": null,
+      "jurisdiction": null,
+      "tags": ""
+    }
+  }
+]

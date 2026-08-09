@@ -24,6 +24,8 @@ export const ENDPOINTS = {
   AUTHORITY_RISK_ZONES: "/risk-zones",
   AUTHORITY_VOLUNTEERS: "/volunteers",
   AUTHORITY_INCIDENTS: "/incidents",
+  AUTHORITY_ANALYTICS: "/authority/analytics",
+  AUTHORITY_AI_RECOMMENDATIONS: "/authority/ai-recommendations",
   // Pending citizen reports awaiting verification (?status=pending).
   AUTHORITY_APPROVALS: "/citizen-reports",
   approvalDecision: (id, decision) =>
@@ -33,8 +35,7 @@ export const ENDPOINTS = {
   // POST only — backend needs a body (e.g. { incidentId }), there's no GET
   // "recommendations feed" endpoint.
   AI_ASSIGN_VOLUNTEERS: "/ai/assign-volunteers",
-  // NO BACKEND ROUTE: authority-scoped analytics. GET /admin/analytics
-  // exists but is admin-only (authorize('admin')), not authority.
+  AI_EVACUATION_ROUTES: "/ai/evacuation-routes",
 
   // Volunteer dashboard
   // trustScore lives on the volunteer's own profile — there's no separate
@@ -43,14 +44,16 @@ export const ENDPOINTS = {
   VOLUNTEER_AVAILABILITY: "/volunteers/me/availability",
   VOLUNTEER_STATS: "/volunteers/me/stats",
   VOLUNTEER_LEADERBOARD: "/volunteers/leaderboard",
-  // Task list/read is intentionally minimal right now — only single-task
-  // GET and the three transitions below exist. There is NO "list my
-  // tasks" or "nearby requests to claim" endpoint yet.
+  // GET /tasks lists the caller's own tasks by default; ?open=true (or
+  // ?status=open) instead lists unassigned open tasks for a volunteer to
+  // browse/claim, optionally nearest-first via ?lng=&lat=&radiusKm=.
+  TASKS: "/tasks",
   taskDetails: (id) => `/tasks/${id}`,
   taskAccept: (id) => `/tasks/${id}/accept`,
   taskReject: (id) => `/tasks/${id}/reject`,
   taskComplete: (id) => `/tasks/${id}/complete`,
-  // NO BACKEND ROUTE: volunteer activity timeline, nearby-requests-to-claim.
+  // NO BACKEND ROUTE: volunteer activity timeline (derived client-side from
+  // /tasks timestamps instead — see useVolunteerTimeline).
 
   // Citizen dashboard
   // Citizens report hazards via CitizenReport, not Incident — POST
@@ -80,6 +83,9 @@ export const ENDPOINTS = {
 
   // Admin dashboard
   ADMIN_DASHBOARD: "/admin/dashboard",
+  ADMIN_PENDING_VOLUNTEERS: "/admin/volunteers/pending",
+  adminApproveVolunteer: (id) => `/admin/volunteers/${id}/approve`,
+  adminRejectVolunteer: (id) => `/admin/volunteers/${id}/reject`,
   // Covers the signup trend too (usersRegisteredPerDay), via ?days=N.
   ADMIN_ANALYTICS: "/admin/analytics",
   ADMIN_ACTIVITY_FEED: "/admin/activity-feed",

@@ -8,6 +8,7 @@
  */
 
 const CitizenReport = require('../models/CitizenReport.model');
+const RiskZone = require('../models/RiskZone.model');
 const ActivityLog = require('../models/ActivityLog.model');
 const ApiError = require('../utils/ApiError');
 const { assertOwnerOrAdmin } = require('../utils/ownership');
@@ -15,6 +16,7 @@ const { parsePagination, buildPaginationMeta, parseSort, parseFilters } = requir
 const { compressImage } = require('../utils/imageCompression');
 const cloudinaryUpload = require('./cloudinaryUpload.service');
 const { safeEmitToRooms } = require('../config/socket');
+const { logger } = require('../utils/logger');
 
 const CREATE_FIELDS = ['hazardType', 'severity', 'description', 'location', 'riskZone', 'incident'];
 const LIST_FILTER_FIELDS = ['status', 'hazardType', 'severity'];
@@ -200,6 +202,35 @@ const applyVerificationAction = async (id, action, fromStatuses, toStatus, actor
     entityId: report._id,
     metadata: { toStatus, reliabilityDelta: delta, note: note || null },
   });
+
+  if (toStatus === 'verified' && report.location?.coordinates) {
+    try {
+      const nearestZone = await RiskZone.findOne({
+        geometry: {
+          $near: {
+            $geometry: { type: 'Point', coordinates: report.location.coordinates }
+          }
+        }
+      });
+      if (nearestZone) {
+        const previousScore = nearestZone.riskScore;
+        nearestZone.riskScore = Math.min(100, nearestZone.riskScore + 5);
+        nearestZone.lastAnalyzedAt = new Date();
+        nearestZone.dataSource = 'citizen_report';
+        await nearestZone.save();
+
+        await ActivityLog.create({
+          performedBySystem: true,
+          action: 'RISKZONE_SCORE_UPDATED',
+          entityType: 'RiskZone',
+          entityId: nearestZone._id,
+          metadata: { from: previousScore, to: nearestZone.riskScore, riskLevel: nearestZone.riskLevel, triggeredByReport: report._id },
+        });
+      }
+    } catch (err) {
+      logger.error('Failed to auto-update nearest risk zone score on report verification', err);
+    }
+  }
 
   emitReportEvent('citizen-report:status-updated', report);
 

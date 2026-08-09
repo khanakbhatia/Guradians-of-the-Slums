@@ -7,6 +7,7 @@
  */
 
 const Volunteer = require('../models/Volunteer.model');
+const User = require('../models/User.model');
 const Task = require('../models/Task.model');
 const ActivityLog = require('../models/ActivityLog.model');
 const ApiError = require('../utils/ApiError');
@@ -63,8 +64,20 @@ const registerVolunteer = async (userId, userRole, payload) => {
 // ---------------------------------------------------------------------------
 
 const getOwnVolunteerProfile = async (userId) => {
-  const volunteer = await Volunteer.findOne({ user: userId }).populate(PUBLIC_PROFILE_POPULATE);
-  if (!volunteer) throw new ApiError(404, 'No volunteer profile found for this account — register one first');
+  let volunteer = await Volunteer.findOne({ user: userId }).populate(PUBLIC_PROFILE_POPULATE);
+  if (!volunteer) {
+    const user = await User.findById(userId);
+    if (user && user.role === 'volunteer') {
+      volunteer = await Volunteer.create({
+        user: userId,
+        skills: ['other'],
+        availability: 'available',
+      });
+      volunteer = await Volunteer.findOne({ user: userId }).populate(PUBLIC_PROFILE_POPULATE);
+    } else {
+      throw new ApiError(404, 'No volunteer profile found for this account — register one first');
+    }
+  }
   return volunteer;
 };
 
@@ -120,8 +133,11 @@ const listVolunteers = async (query) => {
 // ---------------------------------------------------------------------------
 
 const getAvailability = async (userId) => {
-  const volunteer = await Volunteer.findOne({ user: userId }).select('availability currentLocation updatedAt');
-  if (!volunteer) throw new ApiError(404, 'No volunteer profile found for this account');
+  let volunteer = await Volunteer.findOne({ user: userId }).select('availability currentLocation updatedAt');
+  if (!volunteer) {
+    await getOwnVolunteerProfile(userId);
+    volunteer = await Volunteer.findOne({ user: userId }).select('availability currentLocation updatedAt');
+  }
   return volunteer;
 };
 
@@ -134,11 +150,17 @@ const updateAvailability = async (userId, payload) => {
     throw new ApiError(400, `No fields provided. Allowed: ${AVAILABILITY_UPDATE_FIELDS.join(', ')}`);
   }
 
-  const volunteer = await Volunteer.findOneAndUpdate({ user: userId }, patch, {
+  let volunteer = await Volunteer.findOneAndUpdate({ user: userId }, patch, {
     new: true,
     runValidators: true,
   }).select('availability currentLocation updatedAt');
-  if (!volunteer) throw new ApiError(404, 'No volunteer profile found for this account');
+  if (!volunteer) {
+    await getOwnVolunteerProfile(userId);
+    volunteer = await Volunteer.findOneAndUpdate({ user: userId }, patch, {
+      new: true,
+      runValidators: true,
+    }).select('availability currentLocation updatedAt');
+  }
 
   await ActivityLog.create({
     actor: userId,

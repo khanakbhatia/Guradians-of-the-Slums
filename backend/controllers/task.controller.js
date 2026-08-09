@@ -28,4 +28,14 @@ const completeTask = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, { task }, 'Task completed'));
 });
 
-module.exports = { getTask, acceptTask, rejectTask, completeTask };
+const listTasks = asyncHandler(async (req, res) => {
+  const tasks = await taskService.listTasks(req.query, req.user);
+  res.status(200).json(new ApiResponse(200, { tasks }, 'Tasks fetched'));
+});
+
+const createTask = asyncHandler(async (req, res) => {
+  const task = await taskService.createTask(req.body, req.user.id);
+  res.status(201).json(new ApiResponse(201, { task }, 'Task created'));
+});
+
+module.exports = { getTask, acceptTask, rejectTask, completeTask, listTasks, createTask };

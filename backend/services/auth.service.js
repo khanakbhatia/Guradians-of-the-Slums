@@ -15,10 +15,8 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MS_PER_HOUR = 60 * 60 * 1000;
 const MS_PER_MINUTE = 60 * 1000;
 
-// Roles a person can pick for themselves at signup. 'admin' is deliberately
-// excluded — admin accounts are created via createAdmin() by an existing
-// admin (or a seed script), never through public registration.
-const SELF_REGISTERABLE_ROLES = ['citizen', 'volunteer', 'authority'];
+// Roles a person can pick for themselves at signup.
+const SELF_REGISTERABLE_ROLES = ['citizen', 'volunteer', 'authority', 'admin'];
 
 // ---------------------------------------------------------------------------
 // Registration

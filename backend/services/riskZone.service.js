@@ -15,7 +15,7 @@ const { parsePagination, buildPaginationMeta, parseSort, parseFilters } = requir
 const { buildNearFilter, buildBBoxFilter } = require('../utils/geoQuery');
 
 const LIST_FILTER_FIELDS = ['riskLevel', 'hazardType', 'settlement', 'dataSource'];
-const LIST_SORT_FIELDS = ['riskScore', 'createdAt', 'settlement', 'lastAnalyzedAt'];
+const LIST_SORT_FIELDS = ['riskScore', 'createdAt', 'updatedAt', 'settlement', 'lastAnalyzedAt'];
 const DEFAULT_SORT = { riskScore: -1 };
 
 // Metadata fields — go through create/update. Score fields are deliberately

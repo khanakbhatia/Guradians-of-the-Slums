@@ -48,8 +48,9 @@ const hasMatchingSkill = (volunteer, task) => {
 const acceptTask = async (taskId, userId) => {
   const [task, volunteer] = await Promise.all([getTaskById(taskId), getOwnVolunteerRecord(userId)]);
 
-  if (task.status !== 'open') {
-    throw new ApiError(409, `Task is "${task.status}", not "open" — cannot be accepted`);
+  const isAssignedAwaitingAccept = task.status === 'assigned' && !task.acceptedAt && String(task.assignedVolunteer) === String(volunteer._id);
+  if (task.status !== 'open' && !isAssignedAwaitingAccept) {
+    throw new ApiError(409, `Task is "${task.status}" — cannot be accepted`);
   }
   if (!hasMatchingSkill(volunteer, task)) {
     throw new ApiError(
@@ -148,4 +149,71 @@ const completeTask = async (taskId, userId) => {
   return task;
 };
 
-module.exports = { getTaskById, acceptTask, rejectTask, completeTask };
+const listTasks = async (query, user) => {
+  const filter = {};
+  const wantsOpenBrowse = user.role === 'volunteer' && (query.open === 'true' || query.status === 'open');
+
+  if (user.role === 'volunteer' && !wantsOpenBrowse) {
+    const volunteer = await Volunteer.findOne({ user: user.id });
+    if (!volunteer) return [];
+    filter.assignedVolunteer = volunteer._id;
+  } else if (query.assignedVolunteer) {
+    filter.assignedVolunteer = query.assignedVolunteer;
+  }
+
+  if (query.status) {
+    filter.status = query.status;
+  }
+
+  // Nearby/open browsing for volunteers: unassigned tasks near a point,
+  // using Task.location's 2dsphere index. This is the "nearby requests"
+  // widget's backing query — previously volunteers could only ever see
+  // tasks already assigned to them, so there was no way to discover open
+  // tasks to accept.
+  if (wantsOpenBrowse && query.lng !== undefined && query.lat !== undefined) {
+    const lng = Number(query.lng);
+    const lat = Number(query.lat);
+    const radiusKm = query.radiusKm !== undefined ? Number(query.radiusKm) : 15;
+    if (!Number.isNaN(lng) && !Number.isNaN(lat)) {
+      filter.location = {
+        $nearSphere: {
+          $geometry: { type: 'Point', coordinates: [lng, lat] },
+          $maxDistance: Math.max(0, radiusKm) * 1000,
+        },
+      };
+    }
+  }
+
+  const cursor = Task.find(filter).populate('riskZone');
+  // $nearSphere already returns nearest-first; an explicit sort would
+  // conflict with it, so only sort by recency for the non-geo query shape.
+  if (!filter.location) cursor.sort({ createdAt: -1 });
+  return cursor.lean();
+};
+
+const createTask = async (payload, authorityUserId) => {
+  const task = await Task.create({
+    title: payload.title,
+    description: payload.description,
+    incident: payload.incident,
+    riskZone: payload.riskZone ?? null,
+    taskType: payload.taskType,
+    priority: payload.priority ?? 'medium',
+    requiredSkills: payload.requiredSkills ?? [],
+    location: payload.location,
+    estimatedTimeMinutes: payload.estimatedTimeMinutes,
+    createdByAuthority: payload.createdByAuthority ?? null,
+  });
+
+  await ActivityLog.create({
+    actor: authorityUserId,
+    action: 'TASK_CREATED',
+    entityType: 'Task',
+    entityId: task._id,
+    metadata: { incidentId: payload.incident },
+  });
+
+  return task;
+};
+
+module.exports = { getTaskById, acceptTask, rejectTask, completeTask, listTasks, createTask };

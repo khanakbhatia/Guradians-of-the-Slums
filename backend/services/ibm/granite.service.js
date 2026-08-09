@@ -46,6 +46,10 @@ const {
   buildGraniteGenerationRequest,
   mapGraniteGenerationResponseToLegacy,
 } = require('./mappers');
+const { mockExplanation, mockReport } = require('./mockFallback');
+const { logger } = require('../../utils/logger');
+
+const isUnavailable = (err) => err?.statusCode === 503 || err?.statusCode === 504 || err?.statusCode === 502;
 
 class GraniteService extends IBMServiceBase {
   constructor() {
@@ -66,8 +70,17 @@ class GraniteService extends IBMServiceBase {
       weatherData: input.weatherData,
       historicalContext: input.historicalContext,
     });
-    const response = await aiServiceClient.postJSON('/explain', request);
-    return mapExplainabilityResponse(response);
+    try {
+      const response = await aiServiceClient.postJSON('/explain', request);
+      return mapExplainabilityResponse(response);
+    } catch (err) {
+      if (!isUnavailable(err)) throw err;
+      logger.warn('GraniteService.analyzeRisk: ai_service unavailable, returning mock explanation', {
+        areaId: request.area_id,
+        error: err.message,
+      });
+      return mockExplanation(request.area_id);
+    }
   }
 
   /**
@@ -81,8 +94,20 @@ class GraniteService extends IBMServiceBase {
       throw new ApiError(422, 'generateReport requires "incidentContext" (a text description to ground the report on).');
     }
     const request = buildGraniteGenerationRequest(input);
-    const response = await aiServiceClient.postJSON('/report', request);
-    return mapGraniteGenerationResponseToLegacy(response, { language: input.language });
+    try {
+      const response = await aiServiceClient.postJSON('/report', request);
+      return mapGraniteGenerationResponseToLegacy(response, { language: input.language });
+    } catch (err) {
+      if (!isUnavailable(err)) throw err;
+      // Only falls back when ai_service itself is unreachable/timing out — a
+      // 422 (Granite's grounding guard refusing to fabricate ungrounded
+      // text) is a real, intentional error and still propagates.
+      logger.warn('GraniteService.generateReport: ai_service unavailable, returning mock report', {
+        outputType: request.output_type,
+        error: err.message,
+      });
+      return mockReport({ incidentContext: input.incidentContext, outputType: request.output_type, language: input.language });
+    }
   }
 
   async assignVolunteer(input) {

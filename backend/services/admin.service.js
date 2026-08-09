@@ -241,10 +241,10 @@ const approveReport = (id, actor, note) => citizenReportService.verifyReport(id,
 
 const getPendingVolunteers = async (query) => {
   const { page, limit, skip } = parsePagination(query);
-  const filter = { verified: false };
+  const filter = { status: 'pending' };
 
   const [volunteers, totalItems] = await Promise.all([
-    Volunteer.find(filter).sort({ createdAt: 1 }).skip(skip).limit(limit).populate('user', 'name email avatar').lean(),
+    Volunteer.find(filter).sort({ createdAt: 1 }).skip(skip).limit(limit).populate('user', 'name email avatar phone').lean(),
     Volunteer.countDocuments(filter),
   ]);
 
@@ -254,9 +254,10 @@ const getPendingVolunteers = async (query) => {
 const approveVolunteer = async (id, actor) => {
   const volunteer = await Volunteer.findById(id);
   if (!volunteer) throw new ApiError(404, 'Volunteer not found');
-  if (volunteer.verified) throw new ApiError(409, 'Volunteer is already verified');
+  if (volunteer.status === 'approved') throw new ApiError(409, 'Volunteer is already approved');
 
   volunteer.verified = true;
+  volunteer.status = 'approved';
   await volunteer.save();
 
   await ActivityLog.create({
@@ -278,6 +279,46 @@ const approveVolunteer = async (id, actor) => {
     type: 'system',
     title: 'Volunteer profile verified',
     priority: 'normal',
+  });
+
+  return volunteer;
+};
+
+const rejectVolunteer = async (id, actor) => {
+  const volunteer = await Volunteer.findById(id);
+  if (!volunteer) throw new ApiError(404, 'Volunteer not found');
+  if (volunteer.status === 'rejected') throw new ApiError(409, 'Volunteer is already rejected');
+
+  volunteer.verified = false;
+  volunteer.status = 'rejected';
+  await volunteer.save();
+
+  const user = await User.findById(volunteer.user);
+  if (user) {
+    user.isActive = false;
+    await user.save({ validateModifiedOnly: true });
+    await logoutAllDevices(volunteer.user);
+  }
+
+  await ActivityLog.create({
+    actor: actor.id,
+    action: 'VOLUNTEER_REJECTED',
+    entityType: 'User',
+    entityId: volunteer.user,
+    metadata: { volunteerId: volunteer._id },
+  });
+
+  await Notification.create({
+    recipient: volunteer.user,
+    type: 'system',
+    title: 'Volunteer profile rejected',
+    message: 'An admin has rejected your volunteer profile and deactivated your account.',
+    priority: 'high',
+  });
+  safeEmitToRooms([`user:${volunteer.user}`], 'notification:new', {
+    type: 'system',
+    title: 'Volunteer profile rejected',
+    priority: 'high',
   });
 
   return volunteer;
@@ -337,6 +378,7 @@ module.exports = {
   approveReport,
   getPendingVolunteers,
   approveVolunteer,
+  rejectVolunteer,
   suspendUser,
   unsuspendUser,
 };

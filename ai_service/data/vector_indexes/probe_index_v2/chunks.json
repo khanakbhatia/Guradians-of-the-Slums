@@ -1,0 +1,15 @@
+[
+  {
+    "chunk_id": "probe_index_v2:0",
+    "document_id": "doc1",
+    "source_type": "government_sop",
+    "title": "Flood SOP",
+    "source_uri": null,
+    "text": "Heavy rainfall detected. Residents should move to higher ground immediately. Avoid flooded roads and follow evacuation guidance from local authorities.",
+    "metadata": {
+      "published_at": null,
+      "jurisdiction": null,
+      "tags": ""
+    }
+  }
+]

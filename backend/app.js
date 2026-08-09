@@ -95,7 +95,21 @@ app.get('/api/docs.json', (req, res) => res.status(200).json(swaggerSpec));
 
 // Local upload fallback for environments without Cloudinary credentials.
 // Stored filenames are generated server-side; no user-controlled paths are exposed.
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), { maxAge: '1d' }));
+//
+// helmet() above sets `Cross-Origin-Resource-Policy: same-origin` globally.
+// That is the right default for JSON endpoints, but it makes the browser
+// REFUSE to render these images in the dashboard: the SPA runs on its own
+// origin (Vite dev server on :5173, or a separate deployed host) while the
+// files are served from the API origin (:5000), so every citizen-report
+// evidence photo failed to load and rendered as a broken-image icon even
+// though the request itself returned HTTP 200. Relaxing CORP to
+// cross-origin ONLY for this static path lets the images display while
+// leaving the strict default in force for every API response.
+app.use(
+  '/uploads',
+  helmet.crossOriginResourcePolicy({ policy: 'cross-origin' }),
+  express.static(path.join(__dirname, 'uploads'), { maxAge: '1d' })
+);
 
 // Routes
 app.use('/api', routes); // unversioned: /api/health

@@ -8,6 +8,7 @@
 
 const mongoose = require('mongoose');
 const geoPointSchema = require('./schemas/geoPoint.schema');
+const mediaAssetSchema = require('./schemas/mediaAsset.schema');
 
 const SKILLS = ['medical', 'rescue', 'logistics', 'communication', 'construction', 'counseling', 'other'];
 const AVAILABILITY = ['available', 'busy', 'offline'];
@@ -37,6 +38,15 @@ const volunteerSchema = new mongoose.Schema(
       // NGO/authority-confirmed badge, distinct from trustScore (which is earned over time)
       type: Boolean,
       default: false,
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'pending',
+    },
+    verificationDocument: {
+      type: mediaAssetSchema,
+      default: null,
     },
     trustScore: {
       type: Number,

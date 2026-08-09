@@ -7,6 +7,7 @@ import {
   User,
   Settings,
   Crown,
+  UserCheck,
 } from "lucide-react";
 
 import { ROLES, ROUTES } from "@/constants";
@@ -32,6 +33,7 @@ export const ROLE_NAV = {
   ],
   [ROLES.ADMIN]: [
     { label: "Overview", icon: LayoutDashboard, href: ROUTES.DASHBOARD_ADMIN },
+    { label: "Volunteer Approvals", icon: UserCheck, href: ROUTES.VOLUNTEER_APPROVALS },
     { label: "Users", icon: Users, href: ROUTES.DASHBOARD_ADMIN },
     { label: "Platform", icon: Crown, href: ROUTES.DASHBOARD_ADMIN },
   ],
